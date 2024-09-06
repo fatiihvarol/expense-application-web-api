@@ -52,7 +52,7 @@ namespace Web.Api.Services
             {
             new Claim("Id", user.Id.ToString()),
             new Claim("Email", user.Email),
-            new Claim("Role", user.Role.ToString())
+            new Claim(ClaimTypes.Role, user.Role.ToString())
         };
 
             return claims;
