@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Web.Api.Data.AppDbContext;
 using Web.Api.Data.Entities;
@@ -7,6 +8,7 @@ namespace Web.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class UsersController : ControllerBase
     {
         private readonly AppDbContext _appDbContext;
@@ -26,18 +28,12 @@ namespace Web.Api.Controllers
 
         [HttpGet]
 
-        public IActionResult GetUser(AppUserVM user2)
+        public IActionResult GetUser()
         {
-           var user = _appDbContext.Users.Where(x=>x.Email == user2.Email).FirstOrDefault();
-            return Ok();
+            return Ok("deneme");
 
 
         }
-        public class AppUserVM
-
-        {
-            public string Email { get; set; }
-            public string Password { get; set; }
-        }
+       
     }
 }
