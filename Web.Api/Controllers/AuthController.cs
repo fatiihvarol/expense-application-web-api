@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Web.Api.Services;
 using Web.Api.Data.AppDbContext;
 using Microsoft.EntityFrameworkCore;
 using AutoMapper;

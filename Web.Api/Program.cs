@@ -6,7 +6,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Web.Api.Data.AppDbContext;
-using Web.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -61,9 +60,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
 // Veritabanı bağlantısı
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("No connection string");
 builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(connectionString));
+builder.Services.AddHttpContextAccessor();  // IHttpContextAccessor kaydı
 
 // TokenHandler servisinin eklenmesi
-builder.Services.AddSingleton<Web.Api.Services.TokenHandler>();
 builder.Services.AddAutoMapper(typeof(Program)); // Add AutoMapper
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly()));
 

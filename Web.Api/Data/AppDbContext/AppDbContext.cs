@@ -18,6 +18,7 @@ namespace Web.Api.Data.AppDbContext
         public DbSet<VpExpense> VpExpenses { get; set; }
         public DbSet<VpExpenseForm> VpExpenseForms { get; set; }
         public DbSet<VpTransaction> VpTransactions { get; set; }
+        public DbSet<ExpenseFormLog> ExpenseFormLogs { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

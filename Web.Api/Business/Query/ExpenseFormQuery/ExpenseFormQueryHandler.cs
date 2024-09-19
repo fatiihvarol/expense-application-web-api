@@ -1,0 +1,90 @@
+﻿using AutoMapper;
+using MediatR;
+using Microsoft.EntityFrameworkCore;
+using Web.Api.Base.Response;
+using Web.Api.Schema;
+using Web.Api.Data.Entities;
+using Web.Api.Data.AppDbContext;
+using Web.Api.Business.Cqrs;
+using Web.Api.Base.Enums; // Replace with your actual namespace
+
+namespace Web.Api.Business.Query.ExpenseFormQuery
+{
+    public class ExpenseFormQueryHandler
+        : IRequestHandler<GetAllExpensesQuery, ApiResponse<List<ExpenseFormResponse>>>,
+          IRequestHandler<GetExpensesByEmployeeIdQuery, ApiResponse<List<ExpenseFormResponse>>>,
+          IRequestHandler<GetExpenseByIdQuery, ApiResponse<ExpenseFormResponse>>,
+          IRequestHandler<GetExpensesByParametersQuery, ApiResponse<List<ExpenseFormResponse>>>
+    {
+        private readonly AppDbContext _dbContext;
+        private readonly IMapper _mapper;
+
+        public ExpenseFormQueryHandler(AppDbContext dbContext, IMapper mapper)
+        {
+            _dbContext = dbContext;
+            _mapper = mapper;
+        }
+
+        public async Task<ApiResponse<List<ExpenseFormResponse>>> Handle(GetAllExpensesQuery request, CancellationToken cancellationToken)
+        {
+            var expenseForms = await _dbContext.VpExpenseForms
+                .Where(e => e.IsDeleted == false)
+                .Include(e => e.Expenses)
+                .ToListAsync(cancellationToken);
+
+            var response = _mapper.Map<List<ExpenseFormResponse>>(expenseForms);
+            return ApiResponse<List<ExpenseFormResponse>>.Success(response);
+        }
+
+        public async Task<ApiResponse<List<ExpenseFormResponse>>> Handle(GetExpensesByEmployeeIdQuery request, CancellationToken cancellationToken)
+        {
+            var expenseForms = await _dbContext.VpExpenseForms
+                .Where(e => e.IsDeleted == false)
+                .Where(e => e.EmployeeId == request.EmployeeId)
+                .Include(e => e.Expenses) 
+                .ToListAsync(cancellationToken);
+
+            var response = _mapper.Map<List<ExpenseFormResponse>>(expenseForms);
+            return ApiResponse<List<ExpenseFormResponse>>.Success(response);
+        }
+
+        public async Task<ApiResponse<ExpenseFormResponse>> Handle(GetExpenseByIdQuery request, CancellationToken cancellationToken)
+        {
+            var expenseForm = await _dbContext.VpExpenseForms
+                .Include(e => e.Expenses) 
+                .Where(e=>e.IsDeleted==false)
+                .FirstOrDefaultAsync(e => e.Id == request.Id, cancellationToken);
+
+            if (expenseForm == null)
+            {
+                return ApiResponse<ExpenseFormResponse>.Failure("Expense form not found");
+            }
+
+            var response = _mapper.Map<ExpenseFormResponse>(expenseForm);
+            return ApiResponse<ExpenseFormResponse>.Success(response);
+        }
+
+        public async Task<ApiResponse<List<ExpenseFormResponse>>> Handle(GetExpensesByParametersQuery request, CancellationToken cancellationToken)
+        {
+
+            Enum.TryParse(request.Status, out ExpenseStatusEnum statusEnum);
+           
+
+            var expenseForms = await _dbContext.VpExpenseForms
+                .Where(e => e.IsDeleted == false)
+                .Where(e =>
+                    (request.EmployeeId == 0 || e.EmployeeId == request.EmployeeId) &&
+                    (request.Status == null || e.ExpenseStatusEnum == statusEnum) &&
+                    (request.Amount == 0 || e.TotalAmount == request.Amount))
+                .Include(e => e.Expenses) 
+                .ToListAsync(cancellationToken);
+
+
+
+            var response = _mapper.Map<List<ExpenseFormResponse>>(expenseForms);
+            return ApiResponse<List<ExpenseFormResponse>>.Success(response);
+        }
+
+
+    }
+}

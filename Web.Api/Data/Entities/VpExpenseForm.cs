@@ -6,7 +6,7 @@ namespace Web.Api.Data.Entities
     public class VpExpenseForm : VpBaseEntityWithId
     {
 
-        public string? Description { get; set; }
+        public string? RejectionDescription { get; set; }
 
         public decimal TotalAmount { get; set; }
 
