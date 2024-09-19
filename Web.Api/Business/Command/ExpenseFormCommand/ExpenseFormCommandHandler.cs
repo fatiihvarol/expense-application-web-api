@@ -16,7 +16,8 @@ namespace Web.Api.Business.Command.ExpenseFormCommand
         : IRequestHandler<CreateExpenseFormCommand, ApiResponse<ExpenseFormResponse>>,
           IRequestHandler<UpdateExpenseFormCommand, ApiResponse<ExpenseFormResponse>>,
           IRequestHandler<DeleteExpenseFormCommand, ApiResponse<object>>,
-          IRequestHandler<DeclineExpenseFormCommand, ApiResponse<object>>
+          IRequestHandler<DeclineExpenseFormCommand, ApiResponse<object>>,
+        IRequestHandler<ApproveExpenseFormCommand, ApiResponse<object>>
     {
         private readonly AppDbContext _dbContext;
         private readonly IMapper _mapper;
@@ -116,6 +117,35 @@ namespace Web.Api.Business.Command.ExpenseFormCommand
             await _dbContext.SaveChangesAsync(cancellationToken);
 
             return ApiResponse<object>.Success("Expense Form Declined");
+        }
+
+        public async Task<ApiResponse<object>> Handle(ApproveExpenseFormCommand request, CancellationToken cancellationToken)
+        {
+            var managerId = _httpContextAccessor.HttpContext?.User.Claims.FirstOrDefault(c => c.Type == "Id")?.Value;
+
+            if (managerId == null)
+            {
+                return ApiResponse<object>.Failure("Manager Id not found in token");
+            }
+
+           var expenseForm = await _dbContext.VpExpenseForms.FirstOrDefaultAsync(e => e.Id == request.Id, cancellationToken);
+
+            if (expenseForm == null)
+            {
+                return ApiResponse<object>.Failure("Expense form not found");
+            }
+            if ( expenseForm.ManagerId !=Int32.Parse(managerId) )
+            {
+                return ApiResponse<object>.Failure("You are not authorized to approve this expense form");
+            }
+
+            expenseForm.ExpenseStatusEnum = Base.Enums.ExpenseStatusEnum.Approved;
+            expenseForm.ModifiedBy = managerId;
+            expenseForm.ModifiedDate = DateTime.Now;
+            _dbContext.VpExpenseForms.Update(expenseForm);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+
+            return ApiResponse<object>.Success("Expense Form Approved");
         }
     }
 }

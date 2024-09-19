@@ -2,6 +2,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Web.Api.Base.Response;
 using Web.Api.Business.Cqrs;
@@ -98,6 +99,15 @@ namespace Web.Api.Controllers
             var command = new DeclineExpenseFormCommand(id, rejectionDescription);
             var response = await _mediator.Send(command);
             return response.IsSuccess ? NoContent() : BadRequest(response);
+        }
+
+        [HttpPut("Approve/{id}")]
+        [Authorize(Roles = "Manager")]
+        public async Task<ApiResponse<object>> Approve(int id)
+        {
+            var command = new ApproveExpenseFormCommand(id);
+            var response = await _mediator.Send(command);
+            return response;
         }
     }
 }

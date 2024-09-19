@@ -8,6 +8,7 @@ namespace Web.Api.Business.Cqrs
     public record CreateExpenseFormCommand(ExpenseFormRequest Model) : IRequest<ApiResponse<ExpenseFormResponse>>;
 
     public record UpdateExpenseFormCommand(int Id, ExpenseFormRequest Model) : IRequest<ApiResponse<ExpenseFormResponse>>;
+    public record ApproveExpenseFormCommand(int Id) : IRequest<ApiResponse<object>>;
 
     public record DeclineExpenseFormCommand(int Id, string RejectionDescription) : IRequest<ApiResponse<object>>;
 
