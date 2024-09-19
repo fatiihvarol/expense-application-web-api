@@ -1,7 +1,13 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Web.Api.Services;
-using Web.Api.Data.ViewModels.Authentication;
 using Web.Api.Data.AppDbContext;
+using Microsoft.EntityFrameworkCore;
+using AutoMapper;
+using Web.Api.Schema.Authentication;
+using MediatR;
+using Web.Api.Base.Response;
+using Web.Api.Business.Cqrs;
+using Web.Api.Schema;
 
 namespace Web.Api.Controllers
 {
@@ -9,32 +15,20 @@ namespace Web.Api.Controllers
     [ApiController]
     public class AuthController : ControllerBase
     {
-        private readonly TokenHandler _tokenHandler;
-        private readonly AppDbContext _dbContext;
+        private readonly IMediator _mediator;
 
-        public AuthController(TokenHandler tokenHandler, AppDbContext dbContext)
+        public AuthController(IMediator mediator)
         {
-            _tokenHandler = tokenHandler;
-            _dbContext = dbContext;
+            _mediator = mediator;
         }
 
         [HttpPost("login")]
-        public IActionResult Login([FromBody] LoginVM loginVM)
+        public async Task<ApiResponse<AuthResponseVM>> Post([FromBody] LoginVM request)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            var user = _dbContext.Users.FirstOrDefault(u => u.Email == loginVM.Email && u.Password == loginVM.Password);
-            if (user != null)
-            {   
-                var tokenResponse = _tokenHandler.GenerateToken(user);
-                return Ok(tokenResponse);
-            }
-            return BadRequest(ModelState);
-
-            
+            var operation = new CreateTokenCommand(request);
+            var result = await _mediator.Send(operation);
+            return result;
         }
+
     }
 }

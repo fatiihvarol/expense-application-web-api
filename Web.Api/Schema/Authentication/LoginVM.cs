@@ -1,13 +1,13 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace Web.Api.Data.ViewModels.Authentication
+namespace Web.Api.Schema.Authentication
 {
     public class LoginVM
     {
         [Required(ErrorMessage = "Email is required")]
-        public string Email { get; set; }
+        public string? Email { get; set; }
 
         [Required(ErrorMessage = "Password is required")]
-        public string Password { get; set; }
+        public string? Password { get; set; }
     }
 }

@@ -1,5 +1,7 @@
-﻿using System.Text;
+﻿using System.Reflection;
+using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -62,10 +64,30 @@ builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(conn
 
 // TokenHandler servisinin eklenmesi
 builder.Services.AddSingleton<Web.Api.Services.TokenHandler>();
+builder.Services.AddAutoMapper(typeof(Program)); // Add AutoMapper
+builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly()));
+
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+        options.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull; // Optional: Ignores null values
+    });
+
+// CORS konfigürasyonu ekleniyor
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", builder =>
+    {
+        builder.WithOrigins("http://localhost:3000") // React uygulamanızın çalıştığı URL
+               .AllowAnyHeader()                    // Herhangi bir başlığa izin verir
+               .AllowAnyMethod()                    // Herhangi bir HTTP metoduna izin verir (GET, POST, etc.)
+               .AllowCredentials();                 // Çerez ve kimlik doğrulama bilgilerini paylaşır
+    });
+});
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -74,7 +96,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// Authentication ve Authorization middleware'lerinin kullanılması
+app.UseCors("AllowFrontend");
+
 app.UseAuthentication();
 app.UseAuthorization();
 

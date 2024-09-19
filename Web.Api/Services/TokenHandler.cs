@@ -2,10 +2,10 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using Web.Api.Data.ViewModels.Authentication;
 using Microsoft.Extensions.Configuration;
 using System;
 using Web.Api.Data.Entities;
+using Web.Api.Schema.Authentication;
 
 namespace Web.Api.Services
 {
@@ -18,7 +18,7 @@ namespace Web.Api.Services
             _configuration = configuration;
         }
 
-        public AuthResponseVM GenerateToken(User user )
+        public AuthResponseVM GenerateToken(VpApplicationUser user )
         {
             var tokenExpirationInMinutes = int.Parse(_configuration["Token:TokenExpirationInMinutes"]);
 
@@ -46,7 +46,7 @@ namespace Web.Api.Services
             };
         }
 
-        private Claim[] GetClaims(ApplicationUser user)
+        private Claim[] GetClaims(VpApplicationUser user)
         {
             var claims = new[]
             {

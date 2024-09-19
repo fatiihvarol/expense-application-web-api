@@ -1,6 +1,6 @@
 ﻿namespace Web.Api.Base.BaseEntities
 {
-    public abstract class BaseEntityWithId : BaseEntity
+    public abstract class VpBaseEntityWithId : VpBaseEntity
     {
         public int Id { get; set; }
     }

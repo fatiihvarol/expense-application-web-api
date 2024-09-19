@@ -1,35 +1,35 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Web.Api.Base.Response
 {
     public class ApiResponse<T>
     {
-        public bool IsSuccess { get; set; }
-        public T Result { get; set; }
-        public string ErrorMessage { get; set; }
+        public bool IsSuccess { get; private set; }
+        public T? Result { get; private set; }
+        public string? ErrorMessage { get; private set; }
+        public DateTime? ExpiresAt { get; set; }
 
-        public ApiResponse()
+        private ApiResponse(bool isSuccess, T? result, string? errorMessage)
         {
-            IsSuccess = false;
-            ErrorMessage = string.Empty;
-        }
-
-        public ApiResponse(T result)
-        {
-            IsSuccess = true;
+            IsSuccess = isSuccess;
             Result = result;
-            ErrorMessage = string.Empty;
+            ErrorMessage = errorMessage;
         }
 
-        public ApiResponse(Exception ex)
+        // Static factory methods for creating responses
+        public static ApiResponse<T> Success(T result, DateTime? expiresAt = null)
         {
-            IsSuccess = false;
-            Result = default(T);
-            ErrorMessage = ex.Message;
+            return new ApiResponse<T>(true, result, null) { ExpiresAt = expiresAt };
+        }
+
+        public static ApiResponse<T> Failure(string errorMessage)
+        {
+            return new ApiResponse<T>(false, default, errorMessage);
+        }
+
+        public static ApiResponse<T> Failure(Exception ex)
+        {
+            return new ApiResponse<T>(false, default, ex.Message);
         }
     }
 }

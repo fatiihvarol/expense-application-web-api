@@ -1,4 +1,4 @@
-﻿namespace Web.Api.Data.ViewModels.Authentication
+﻿namespace Web.Api.Schema.Authentication
 {
     public class AuthResponseVM
     {
