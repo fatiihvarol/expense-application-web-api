@@ -20,11 +20,17 @@ namespace Web.Api.Controllers
             _mediator = mediator;
         }
 
-        // GET: api/ExpenseForms
-        [HttpGet]
+        [HttpGet("GelAllExpenses")]
         public async Task<IActionResult> GetAll()
         {
             var query = new GetAllExpensesQuery();
+            var response = await _mediator.Send(query);
+            return response.IsSuccess ? Ok(response) : BadRequest(response);
+        }
+        [HttpGet("GetMyExpenses")]
+        public async Task<IActionResult> GetMyExpenses()
+        {
+            var query = new GetMyExpensesQuery();
             var response = await _mediator.Send(query);
             return response.IsSuccess ? Ok(response) : BadRequest(response);
         }
@@ -60,7 +66,7 @@ namespace Web.Api.Controllers
         }
 
         // POST: api/ExpenseForms
-        [HttpPost]
+        [HttpPost("Create")]
         public async Task<IActionResult> Create([FromBody] ExpenseFormRequest request)
         {
             var command = new CreateExpenseFormCommand(request);
@@ -83,6 +89,13 @@ namespace Web.Api.Controllers
         public async Task<IActionResult> Delete(int id)
         {
             var command = new DeleteExpenseFormCommand(id);
+            var response = await _mediator.Send(command);
+            return response.IsSuccess ? NoContent() : BadRequest(response);
+        }
+        [HttpPut("Reject/{id}")]
+        public async Task<IActionResult> Decline(int id, [FromBody] string rejectionDescription)
+        {
+            var command = new DeclineExpenseFormCommand(id, rejectionDescription);
             var response = await _mediator.Send(command);
             return response.IsSuccess ? NoContent() : BadRequest(response);
         }

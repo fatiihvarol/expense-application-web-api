@@ -18,7 +18,7 @@ namespace Web.Api.Data.AppDbContext
         public DbSet<VpExpense> VpExpenses { get; set; }
         public DbSet<VpExpenseForm> VpExpenseForms { get; set; }
         public DbSet<VpTransaction> VpTransactions { get; set; }
-        public DbSet<ExpenseFormLog> ExpenseFormLogs { get; set; }
+        public DbSet<VpExpenseFormLog> ExpenseFormLogs { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -70,6 +70,12 @@ namespace Web.Api.Data.AppDbContext
                 .HasOne(t => t.ExpenseForm)
                 .WithOne()
                 .HasForeignKey<VpTransaction>(t => t.ExpenseFormId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<VpExpenseFormLog>()
+                .HasOne(log => log.VpExpenseForm)           
+                .WithMany(form => form.VpExpenseFormLogs)  
+                .HasForeignKey(log => log.ExpenseFormId)    
                 .OnDelete(DeleteBehavior.Cascade);
 
             base.OnModelCreating(modelBuilder);

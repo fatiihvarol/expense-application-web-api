@@ -14,15 +14,18 @@ namespace Web.Api.Business.Query.ExpenseFormQuery
         : IRequestHandler<GetAllExpensesQuery, ApiResponse<List<ExpenseFormResponse>>>,
           IRequestHandler<GetExpensesByEmployeeIdQuery, ApiResponse<List<ExpenseFormResponse>>>,
           IRequestHandler<GetExpenseByIdQuery, ApiResponse<ExpenseFormResponse>>,
-          IRequestHandler<GetExpensesByParametersQuery, ApiResponse<List<ExpenseFormResponse>>>
+          IRequestHandler<GetExpensesByParametersQuery, ApiResponse<List<ExpenseFormResponse>>>,
+          IRequestHandler<GetMyExpensesQuery, ApiResponse<List<ExpenseFormResponse>>>
     {
         private readonly AppDbContext _dbContext;
         private readonly IMapper _mapper;
+        private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public ExpenseFormQueryHandler(AppDbContext dbContext, IMapper mapper)
+        public ExpenseFormQueryHandler(AppDbContext dbContext, IMapper mapper, IHttpContextAccessor httpContextAccessor)
         {
             _dbContext = dbContext;
             _mapper = mapper;
+            _httpContextAccessor = httpContextAccessor;
         }
 
         public async Task<ApiResponse<List<ExpenseFormResponse>>> Handle(GetAllExpensesQuery request, CancellationToken cancellationToken)
@@ -85,6 +88,22 @@ namespace Web.Api.Business.Query.ExpenseFormQuery
             return ApiResponse<List<ExpenseFormResponse>>.Success(response);
         }
 
+        public async Task<ApiResponse<List<ExpenseFormResponse>>> Handle(GetMyExpensesQuery request, CancellationToken cancellationToken)
+        {
+            var userId = _httpContextAccessor.HttpContext?.User.Claims.FirstOrDefault(c => c.Type == "Id")?.Value;
 
+            if (userId == null)
+            {
+                return ApiResponse<List<ExpenseFormResponse>>.Failure("User Id not found in token");
+            }
+            var expenseForms = await _dbContext.VpExpenseForms
+                .Where(e => e.IsDeleted == false)
+                .Where(e => e.EmployeeId == Int32.Parse(userId))
+                .Include(e => e.Expenses) 
+                .ToListAsync(cancellationToken);
+
+            var response = _mapper.Map<List<ExpenseFormResponse>>(expenseForms);
+            return ApiResponse<List<ExpenseFormResponse>>.Success(response);
+        }
     }
 }
