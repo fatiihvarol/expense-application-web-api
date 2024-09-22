@@ -21,14 +21,15 @@ namespace Web.Api.Controllers
             _mediator = mediator;
         }
 
-        [HttpGet("GelAllExpenses")]
+        [HttpGet("GetAllExpenseForms")]
+        [Authorize(Roles = "Manager")]
         public async Task<IActionResult> GetAll()
         {
             var query = new GetAllExpensesQuery();
             var response = await _mediator.Send(query);
             return response.IsSuccess ? Ok(response) : BadRequest(response);
         }
-        [HttpGet("GetMyExpenses")]
+        [HttpGet("GetMyExpenseForms")]
         public async Task<IActionResult> GetMyExpenses()
         {
             var query = new GetMyExpensesQuery();
@@ -61,7 +62,16 @@ namespace Web.Api.Controllers
             [FromQuery] string? status,
             [FromQuery] decimal amount)
         {
-            var query = new GetExpensesByParametersQuery( employeeId, status, amount);
+            var query = new GetExpensesByParametersQuery(employeeId, status, amount);
+            var response = await _mediator.Send(query);
+            return response.IsSuccess ? Ok(response) : BadRequest(response);
+        }
+        // GET: api/ExpenseForms/ByManager
+        [HttpGet("ByManager")]
+        public async Task<IActionResult> GetByManager()
+
+        {
+            var query = new GetExpenseFormsByManager();
             var response = await _mediator.Send(query);
             return response.IsSuccess ? Ok(response) : BadRequest(response);
         }
@@ -79,7 +89,7 @@ namespace Web.Api.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, [FromBody] ExpenseFormRequest request)
         {
-          var command = new UpdateExpenseFormCommand(id, request);
+            var command = new UpdateExpenseFormCommand(id, request);
 
             var response = await _mediator.Send(command);
             return response.IsSuccess ? NoContent() : BadRequest(response);

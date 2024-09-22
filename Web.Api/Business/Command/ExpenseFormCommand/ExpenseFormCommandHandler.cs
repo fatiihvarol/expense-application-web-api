@@ -58,12 +58,22 @@ namespace Web.Api.Business.Command.ExpenseFormCommand
                 return ApiResponse<ExpenseFormResponse>.Failure("You can not add empty expense");
             }
 
+
             var expenseForm = _mapper.Map<VpExpenseForm>(request);
-            expenseForm.EmployeeId = employee.Id;  
-            expenseForm.ManagerId = manager.Id;  
+            expenseForm.EmployeeId = employee.Id;
+            expenseForm.ManagerId = manager.Id;
             expenseForm.ExpenseStatusEnum = ExpenseStatusEnum.Pending;
             expenseForm.CreatedDate = DateTime.Now;
             expenseForm.CreateBy = userId;
+
+            if (expenseForm.Expenses != null)
+            {
+                foreach (var expense in expenseForm.Expenses)
+                {
+                    expense.CreatedDate = DateTime.Now;
+                    expense.CreateBy = userId;
+                }
+            }
 
             var fromdb = _dbContext.VpExpenseForms.Add(expenseForm);
             await _dbContext.SaveChangesAsync(cancellationToken);
@@ -75,19 +85,36 @@ namespace Web.Api.Business.Command.ExpenseFormCommand
 
         public async Task<ApiResponse<ExpenseFormResponse>> Handle(UpdateExpenseFormCommand request, CancellationToken cancellationToken)
         {
-            var expenseForm = await _dbContext.VpExpenseForms.FindAsync(request.Id);
+            var expenseForm = await _dbContext.VpExpenseForms
+                .Include(x => x.Expenses)
+                .FirstOrDefaultAsync(x => x.Id == request.Id, cancellationToken); // Tek bir nesne al
+
             if (expenseForm == null)
             {
                 return ApiResponse<ExpenseFormResponse>.Failure("Expense form not found");
             }
 
-            _mapper.Map(request, expenseForm);
-            _dbContext.VpExpenseForms.Update(expenseForm);
+            // Modelden expenseForm'a sadece güncellenmesi gereken alanları eşle
+            _mapper.Map(request.Model, expenseForm);
+            expenseForm.ModifiedDate = DateTime.Now;
+            expenseForm.ModifiedBy = _httpContextAccessor.HttpContext?.User.Claims.FirstOrDefault(c => c.Type == "Id")?.Value;
+
+            if (expenseForm.Expenses != null)
+            {
+                foreach (var item in expenseForm.Expenses)
+                {
+                    item.ModifiedDate = DateTime.Now;
+                    item.ModifiedBy = _httpContextAccessor.HttpContext?.User.Claims.FirstOrDefault(c => c.Type == "Id")?.Value;
+                }
+            }
+
+            _dbContext.VpExpenseForms.Update(expenseForm); // Update işlemi yapılabilir
             await _dbContext.SaveChangesAsync(cancellationToken);
 
             var response = _mapper.Map<ExpenseFormResponse>(expenseForm);
             return ApiResponse<ExpenseFormResponse>.Success(response);
         }
+
 
         public async Task<ApiResponse<object>> Handle(DeleteExpenseFormCommand request, CancellationToken cancellationToken)
         {
@@ -128,13 +155,13 @@ namespace Web.Api.Business.Command.ExpenseFormCommand
                 return ApiResponse<object>.Failure("Manager Id not found in token");
             }
 
-           var expenseForm = await _dbContext.VpExpenseForms.FirstOrDefaultAsync(e => e.Id == request.Id, cancellationToken);
+            var expenseForm = await _dbContext.VpExpenseForms.FirstOrDefaultAsync(e => e.Id == request.Id, cancellationToken);
 
             if (expenseForm == null)
             {
                 return ApiResponse<object>.Failure("Expense form not found");
             }
-            if ( expenseForm.ManagerId !=Int32.Parse(managerId) )
+            if (expenseForm.ManagerId != Int32.Parse(managerId))
             {
                 return ApiResponse<object>.Failure("You are not authorized to approve this expense form");
             }

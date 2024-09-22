@@ -15,7 +15,8 @@ namespace Web.Api.Business.Query.ExpenseFormQuery
           IRequestHandler<GetExpensesByEmployeeIdQuery, ApiResponse<List<ExpenseFormResponse>>>,
           IRequestHandler<GetExpenseByIdQuery, ApiResponse<ExpenseFormResponse>>,
           IRequestHandler<GetExpensesByParametersQuery, ApiResponse<List<ExpenseFormResponse>>>,
-          IRequestHandler<GetMyExpensesQuery, ApiResponse<List<ExpenseFormResponse>>>
+          IRequestHandler<GetMyExpensesQuery, ApiResponse<List<ExpenseFormResponse>>>,
+        IRequestHandler<GetExpenseFormsByManager, ApiResponse<List<ExpenseFormResponse>>>
     {
         private readonly AppDbContext _dbContext;
         private readonly IMapper _mapper;
@@ -104,6 +105,31 @@ namespace Web.Api.Business.Query.ExpenseFormQuery
 
             var response = _mapper.Map<List<ExpenseFormResponse>>(expenseForms);
             return ApiResponse<List<ExpenseFormResponse>>.Success(response);
+        }
+
+        public Task<ApiResponse<List<ExpenseFormResponse>>> Handle(GetExpenseFormsByManager request, CancellationToken cancellationToken)
+        {
+            var userId = _httpContextAccessor.HttpContext?.User.Claims.FirstOrDefault(c => c.Type == "Id")?.Value;
+
+            if (userId is null)       
+                return Task.FromResult(ApiResponse<List<ExpenseFormResponse>>.Failure("User Id not found in token"));
+            
+            var expenseForms = _dbContext.VpExpenseForms
+                .Where(e => e.IsDeleted == false)
+                .Where(e => e.ManagerId == Int32.Parse(userId))
+                .Where(e => e.ExpenseStatusEnum == ExpenseStatusEnum.Pending)
+                .Include(e => e.Expenses) 
+                .ToList();
+
+            var response = _mapper.Map<List<ExpenseFormResponse>>(expenseForms);
+
+            foreach (var item in response)
+            {
+                item.EmployeeFullName = _dbContext.VpEmployees.FirstOrDefault(e => e.Id == item.EmployeeId)?.Name + " " + _dbContext.VpEmployees.FirstOrDefault(e => e.Id == item.EmployeeId)?.Surname;
+            }
+
+            return Task.FromResult(ApiResponse<List<ExpenseFormResponse>>.Success(response));
+
         }
     }
 }

@@ -25,7 +25,7 @@ namespace Web.Api.Data.Entities
         public int? AccountantId { get; set; }
         public virtual VpAccountant? VpAccountant { get; set; }
 
-        public virtual ICollection<VpExpenseFormLog> VpExpenseFormLogs { get; set; }
+        public virtual ICollection<VpExpenseFormLog>? VpExpenseFormLogs { get; set; }
 
     }
 }

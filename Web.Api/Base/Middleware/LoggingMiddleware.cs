@@ -4,12 +4,12 @@ using System.IO;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-public class RequestLoggingMiddleware
+public class LoggingMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly IHttpContextAccessor _httpContextAccessor;
 
-    public RequestLoggingMiddleware(RequestDelegate next, IHttpContextAccessor httpContextAccessor)
+    public LoggingMiddleware(RequestDelegate next, IHttpContextAccessor httpContextAccessor)
     {
         _next = next;
         _httpContextAccessor = httpContextAccessor;
