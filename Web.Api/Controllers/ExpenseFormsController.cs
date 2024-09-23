@@ -75,6 +75,15 @@ namespace Web.Api.Controllers
             var response = await _mediator.Send(query);
             return response.IsSuccess ? Ok(response) : BadRequest(response);
         }
+        // GET: api/ExpenseForms/ByAccountant
+        [HttpGet("ByAccountant")]
+        public async Task<IActionResult> GetByAccountant()
+
+        {
+            var query = new GetExpenseFormsByAccountant();
+            var response = await _mediator.Send(query);
+            return response.IsSuccess ? Ok(response) : BadRequest(response);
+        }
 
         // POST: api/ExpenseForms
         [HttpPost("Create")]
@@ -119,5 +128,21 @@ namespace Web.Api.Controllers
             var response = await _mediator.Send(command);
             return response;
         }
+        [HttpPut("Pay/{id}")]
+        [Authorize(Roles = "Accountant")]
+        public async Task<ApiResponse<object>> Pay(int id)
+        {
+            var command = new PayExpenseFormCommand(id);
+            var response = await _mediator.Send(command);
+            return response;
+        }
+        [HttpGet("GetEmployeeExpenseInfo")]
+        public async Task<IActionResult> GetEmployeeExpenseInfo()
+        {
+            var query = new GetEmployeeExpenseInfoQuery();
+            var response = await _mediator.Send(query);
+            return response.IsSuccess ? Ok(response) : BadRequest(response);
+        }
+
     }
 }

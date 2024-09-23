@@ -17,7 +17,8 @@ namespace Web.Api.Business.Command.ExpenseFormCommand
           IRequestHandler<UpdateExpenseFormCommand, ApiResponse<ExpenseFormResponse>>,
           IRequestHandler<DeleteExpenseFormCommand, ApiResponse<object>>,
           IRequestHandler<DeclineExpenseFormCommand, ApiResponse<object>>,
-        IRequestHandler<ApproveExpenseFormCommand, ApiResponse<object>>
+        IRequestHandler<ApproveExpenseFormCommand, ApiResponse<object>>,
+        IRequestHandler<PayExpenseFormCommand, ApiResponse<object>>
     {
         private readonly AppDbContext _dbContext;
         private readonly IMapper _mapper;
@@ -107,8 +108,8 @@ namespace Web.Api.Business.Command.ExpenseFormCommand
                     item.ModifiedBy = _httpContextAccessor.HttpContext?.User.Claims.FirstOrDefault(c => c.Type == "Id")?.Value;
                 }
             }
-
-            _dbContext.VpExpenseForms.Update(expenseForm); // Update işlemi yapılabilir
+            expenseForm.RejectionDescription = null;
+            _dbContext.VpExpenseForms.Update(expenseForm); 
             await _dbContext.SaveChangesAsync(cancellationToken);
 
             var response = _mapper.Map<ExpenseFormResponse>(expenseForm);
@@ -118,13 +119,36 @@ namespace Web.Api.Business.Command.ExpenseFormCommand
 
         public async Task<ApiResponse<object>> Handle(DeleteExpenseFormCommand request, CancellationToken cancellationToken)
         {
-            var expenseForm = await _dbContext.VpExpenseForms.FindAsync(request.Id, cancellationToken);
+            var userId = _httpContextAccessor.HttpContext?.User.Claims.FirstOrDefault(c => c.Type == "Id")?.Value;
+
+            if (userId == null)
+            {
+                return ApiResponse<object>.Failure("User Id not found in token");
+            }
+
+            var expenseForm = await _dbContext.VpExpenseForms
+                .Include(x => x.Expenses)
+                .FirstOrDefaultAsync(x => x.Id == request.Id, cancellationToken);
             if (expenseForm == null)
             {
                 return ApiResponse<object>.Failure("Expense form not found");
             }
 
             expenseForm.IsDeleted = true;
+            expenseForm.ModifiedDate = DateTime.Now;
+            expenseForm.ModifiedBy = userId;
+
+            if (expenseForm.Expenses != null)
+            {
+                foreach (var expense in expenseForm.Expenses)
+                {
+                    expense.IsDeleted = true;
+                    expense.ModifiedDate = DateTime.Now;
+                    expense.ModifiedBy = userId;
+                }
+            }
+
+
             await _dbContext.SaveChangesAsync(cancellationToken);
 
             return ApiResponse<object>.Success("Expense Form Deleted");
@@ -173,6 +197,31 @@ namespace Web.Api.Business.Command.ExpenseFormCommand
             await _dbContext.SaveChangesAsync(cancellationToken);
 
             return ApiResponse<object>.Success("Expense Form Approved");
+        }
+
+        public Task<ApiResponse<object>> Handle(PayExpenseFormCommand request, CancellationToken cancellationToken)
+        {
+            var accountantId = _httpContextAccessor.HttpContext?.User.Claims.FirstOrDefault(c => c.Type == "Id")?.Value;
+            if (accountantId == null)
+            {
+                return Task.FromResult(ApiResponse<object>.Failure("Accountant Id not found in token"));
+            }
+
+            var expenseForm = _dbContext.VpExpenseForms.FirstOrDefault(e => e.Id == request.Id);
+            if (expenseForm == null)
+            {
+                return Task.FromResult(ApiResponse<object>.Failure("Expense form not found"));
+            }
+
+            expenseForm.AccountantId = Int32.Parse(accountantId);
+            expenseForm.ExpenseStatusEnum = Base.Enums.ExpenseStatusEnum.Paid;
+            expenseForm.ModifiedBy = accountantId;
+            expenseForm.ModifiedDate = DateTime.Now;
+            _dbContext.VpExpenseForms.Update(expenseForm);
+            _dbContext.SaveChanges();
+
+            return Task.FromResult(ApiResponse<object>.Success("Expense Form Paid"));
+
         }
     }
 }
