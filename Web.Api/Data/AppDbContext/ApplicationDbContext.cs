@@ -4,6 +4,7 @@ using Web.Api.Data.Entities;
 
 namespace Web.Api.Data.AppDbContext
 {
+
     public class AppDbContext : DbContext
     {
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
@@ -18,8 +19,12 @@ namespace Web.Api.Data.AppDbContext
         public DbSet<VpExpense> VpExpenses { get; set; }
         public DbSet<VpExpenseForm> VpExpenseForms { get; set; }
         public DbSet<VpExpenseFormHistory> VpExpenseFormHistories { get; set; }
+        public DbSet<VpExpenseCategory> VpExpenseCategories { get; set; }
 
-
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        {
+            
+        }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -71,6 +76,12 @@ namespace Web.Api.Data.AppDbContext
                 .WithMany(form => form.VpExpenseFormHistories)
                 .HasForeignKey(history => history.ExpenseFormId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<VpExpense>()
+                .HasOne(e => e.Category)
+                .WithMany()
+                .HasForeignKey(e => e.CategoryId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             base.OnModelCreating(modelBuilder);
         }

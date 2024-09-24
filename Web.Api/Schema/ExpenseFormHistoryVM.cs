@@ -7,7 +7,8 @@ namespace Web.Api.Schema
         public int Id { get; set; }
         public int ExpenseFormId { get; set; }
         public string? Action { get; set; }
-        public string? MadeBy { get; set; }
+        public int MadeBy { get; set; }
+        public string? FullName { get; set; }
         public DateTime Date { get; set; }
     }
 }

@@ -20,6 +20,7 @@ namespace Web.Api.Business.Cqrs
     public record GetMyExpensesQuery() : IRequest<ApiResponse<List<ExpenseFormResponse>>>;
     public record GetExpenseFormsByManager() : IRequest<ApiResponse<List<ExpenseFormResponse>>>;
     public record GetExpenseFormsByAccountant() : IRequest<ApiResponse<List<ExpenseFormResponse>>>;
+    public record GetExpenseFormsByAdmin() : IRequest<ApiResponse<List<ExpenseFormResponse>>>;
 
     public record GetExpensesByEmployeeIdQuery(int EmployeeId) : IRequest<ApiResponse<List<ExpenseFormResponse>>>;
 

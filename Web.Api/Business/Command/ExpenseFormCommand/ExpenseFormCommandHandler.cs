@@ -82,7 +82,6 @@ namespace Web.Api.Business.Command.ExpenseFormCommand
             await _dbContext.SaveChangesAsync(cancellationToken);
 
             await _expenseFormHistoryHelper.AddHistoryLog(fromdb.Entity.Id, userId, HistoryActionEnum.Created, cancellationToken,_dbContext);
-            await _dbContext.SaveChangesAsync(cancellationToken);
 
             var response = _mapper.Map<ExpenseFormResponse>(expenseForm);
             return ApiResponse<ExpenseFormResponse>.Success(response);
@@ -93,11 +92,23 @@ namespace Web.Api.Business.Command.ExpenseFormCommand
         {
             var expenseForm = await _dbContext.VpExpenseForms
                 .Include(x => x.Expenses)
-                .FirstOrDefaultAsync(x => x.Id == request.Id, cancellationToken); // Tek bir nesne al
+                .ThenInclude(y=> y.Category)
+                .FirstOrDefaultAsync(x => x.Id == request.Id, cancellationToken);
+           
 
             if (expenseForm == null)
             {
                 return ApiResponse<ExpenseFormResponse>.Failure("Expense form not found");
+            }
+            var userId = _httpContextAccessor.HttpContext?.User.Claims.FirstOrDefault(c => c.Type == "Id")?.Value;
+
+            if (userId == null)
+            {
+                return ApiResponse<ExpenseFormResponse>.Failure("User Id not found in token");
+            }
+            if (expenseForm.EmployeeId != Int32.Parse(userId))
+            {
+                return ApiResponse<ExpenseFormResponse>.Failure("You are not authorized to update this expense form");
             }
 
             // Modelden expenseForm'a sadece güncellenmesi gereken alanları eşle
@@ -114,8 +125,10 @@ namespace Web.Api.Business.Command.ExpenseFormCommand
                 }
             }
             expenseForm.RejectionDescription = null;
-            _dbContext.VpExpenseForms.Update(expenseForm);
+           _dbContext.VpExpenseForms.Update(expenseForm);
             await _dbContext.SaveChangesAsync(cancellationToken);
+
+            await _expenseFormHistoryHelper.AddHistoryLog(expenseForm.Id, userId, HistoryActionEnum.Updated, cancellationToken, _dbContext);
 
             var response = _mapper.Map<ExpenseFormResponse>(expenseForm);
             return ApiResponse<ExpenseFormResponse>.Success(response);
@@ -155,12 +168,19 @@ namespace Web.Api.Business.Command.ExpenseFormCommand
 
 
             await _dbContext.SaveChangesAsync(cancellationToken);
+            await _expenseFormHistoryHelper.AddHistoryLog(expenseForm.Id, userId, HistoryActionEnum.Deleted, cancellationToken, _dbContext);
 
             return ApiResponse<object>.Success("Expense Form Deleted");
         }
 
         public async Task<ApiResponse<object>> Handle(DeclineExpenseFormCommand request, CancellationToken cancellationToken)
         {
+            var userId = _httpContextAccessor.HttpContext?.User.Claims.FirstOrDefault(c => c.Type == "Id")?.Value;
+            if (userId == null)
+            {
+                return 
+                    ApiResponse<object>.Failure("User Id not found in token");
+            }
             var expenseForm = await _dbContext.VpExpenseForms.FirstOrDefaultAsync(e => e.Id == request.Id, cancellationToken);
             if (expenseForm == null)
             {
@@ -171,6 +191,8 @@ namespace Web.Api.Business.Command.ExpenseFormCommand
             expenseForm.RejectionDescription = request.RejectionDescription;
             _dbContext.VpExpenseForms.Update(expenseForm);
             await _dbContext.SaveChangesAsync(cancellationToken);
+
+            await _expenseFormHistoryHelper.AddHistoryLog(expenseForm.Id, userId, HistoryActionEnum.Rejected, cancellationToken, _dbContext);
 
             return ApiResponse<object>.Success("Expense Form Declined");
         }
@@ -201,21 +223,23 @@ namespace Web.Api.Business.Command.ExpenseFormCommand
             _dbContext.VpExpenseForms.Update(expenseForm);
             await _dbContext.SaveChangesAsync(cancellationToken);
 
+            await _expenseFormHistoryHelper.AddHistoryLog(expenseForm.Id, managerId, HistoryActionEnum.Approved, cancellationToken, _dbContext);
+
             return ApiResponse<object>.Success("Expense Form Approved");
         }
 
-        public Task<ApiResponse<object>> Handle(PayExpenseFormCommand request, CancellationToken cancellationToken)
+        public async Task<ApiResponse<object>> Handle(PayExpenseFormCommand request, CancellationToken cancellationToken)
         {
             var accountantId = _httpContextAccessor.HttpContext?.User.Claims.FirstOrDefault(c => c.Type == "Id")?.Value;
             if (accountantId == null)
             {
-                return Task.FromResult(ApiResponse<object>.Failure("Accountant Id not found in token"));
+                return ApiResponse<object>.Failure("Accountant Id not found in token");
             }
 
             var expenseForm = _dbContext.VpExpenseForms.FirstOrDefault(e => e.Id == request.Id);
             if (expenseForm == null)
             {
-                return Task.FromResult(ApiResponse<object>.Failure("Expense form not found"));
+                return ApiResponse<object>.Failure("Expense form not found");
             }
 
             expenseForm.AccountantId = Int32.Parse(accountantId);
@@ -225,7 +249,9 @@ namespace Web.Api.Business.Command.ExpenseFormCommand
             _dbContext.VpExpenseForms.Update(expenseForm);
             _dbContext.SaveChanges();
 
-            return Task.FromResult(ApiResponse<object>.Success("Expense Form Paid"));
+            await _expenseFormHistoryHelper.AddHistoryLog(expenseForm.Id, accountantId, HistoryActionEnum.Paid, cancellationToken, _dbContext);
+
+            return ApiResponse<object>.Success("Expense Form Paid");
 
         }
     }

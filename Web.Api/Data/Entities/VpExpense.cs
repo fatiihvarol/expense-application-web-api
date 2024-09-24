@@ -9,7 +9,8 @@ namespace Web.Api.Data.Entities
         public decimal Amount { get; set; }
         public string? Description { get; set; }
         public string? Location { get; set; }
-        public string? Category { get; set; }
+        public int CategoryId { get; set; }
+        public VpExpenseCategory Category { get; set; }
         public string? ReceiptNumber { get; set; }
 
         public int ExpenseFormId { get; set; }

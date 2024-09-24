@@ -18,7 +18,9 @@ namespace Web.Api.Business.Query.ExpenseFormQuery
           IRequestHandler<GetMyExpensesQuery, ApiResponse<List<ExpenseFormResponse>>>,
         IRequestHandler<GetExpenseFormsByManager, ApiResponse<List<ExpenseFormResponse>>>,
         IRequestHandler<GetExpenseFormsByAccountant, ApiResponse<List<ExpenseFormResponse>>>,
-        IRequestHandler<GetEmployeeExpenseInfoQuery, ApiResponse<EmployeeExpenseInfoVM>>
+        IRequestHandler<GetEmployeeExpenseInfoQuery, ApiResponse<EmployeeExpenseInfoVM>>,
+        IRequestHandler<GetExpenseFormsByAdmin, ApiResponse<List<ExpenseFormResponse>>>
+
     {
         private readonly AppDbContext _dbContext;
         private readonly IMapper _mapper;
@@ -36,6 +38,7 @@ namespace Web.Api.Business.Query.ExpenseFormQuery
             var expenseForms = await _dbContext.VpExpenseForms
                 .Where(e => e.IsDeleted == false)
                 .Include(e => e.Expenses)
+                .ThenInclude(expense => expense.Category)
                 .ToListAsync(cancellationToken);
 
             var response = _mapper.Map<List<ExpenseFormResponse>>(expenseForms);
@@ -47,7 +50,8 @@ namespace Web.Api.Business.Query.ExpenseFormQuery
             var expenseForms = await _dbContext.VpExpenseForms
                 .Where(e => e.IsDeleted == false)
                 .Where(e => e.EmployeeId == request.EmployeeId)
-                .Include(e => e.Expenses) 
+                .Include(e => e.Expenses)
+                .ThenInclude(expense => expense.Category)
                 .ToListAsync(cancellationToken);
 
             var response = _mapper.Map<List<ExpenseFormResponse>>(expenseForms);
@@ -64,7 +68,9 @@ namespace Web.Api.Business.Query.ExpenseFormQuery
             var user = _dbContext.VpApplicationUsers.FirstOrDefault(u => u.Id == Int32.Parse(userId));
             
             var expenseForm = await _dbContext.VpExpenseForms
-                .Include(e => e.Expenses) 
+                .Include(e => e.Expenses)
+                .ThenInclude(expense => expense.Category)
+
                 .Where(e=>e.IsDeleted==false)
                 .FirstOrDefaultAsync(e => e.Id == request.Id, cancellationToken);
 
@@ -101,7 +107,8 @@ namespace Web.Api.Business.Query.ExpenseFormQuery
                     (request.EmployeeId == 0 || e.EmployeeId == request.EmployeeId) &&
                     (request.Status == null || e.ExpenseStatusEnum == statusEnum) &&
                     (request.Amount == 0 || e.TotalAmount == request.Amount))
-                .Include(e => e.Expenses) 
+                .Include(e => e.Expenses)
+                .ThenInclude(expense => expense.Category)
                 .ToListAsync(cancellationToken);
 
 
@@ -118,11 +125,14 @@ namespace Web.Api.Business.Query.ExpenseFormQuery
             {
                 return ApiResponse<List<ExpenseFormResponse>>.Failure("User Id not found in token");
             }
-            var expenseForms = await _dbContext.VpExpenseForms
-                .Where(e => e.IsDeleted == false)
-                .Where(e => e.EmployeeId == Int32.Parse(userId))
-                .Include(e => e.Expenses) 
-                .ToListAsync(cancellationToken);
+              var expenseForms = await _dbContext.VpExpenseForms
+           .Where(e => e.IsDeleted == false)
+           .Where(e => e.EmployeeId == int.Parse(userId))
+           .Include(e => e.Expenses)                    // Include Expenses
+           .ThenInclude(expense => expense.Category)    // ThenInclude Category in each Expense
+           .ToListAsync(cancellationToken);
+
+
 
             var response = _mapper.Map<List<ExpenseFormResponse>>(expenseForms);
             return ApiResponse<List<ExpenseFormResponse>>.Success(response);
@@ -140,6 +150,7 @@ namespace Web.Api.Business.Query.ExpenseFormQuery
                 .Where(e => e.ManagerId == Int32.Parse(userId))
                 .Where(e => e.ExpenseStatusEnum == ExpenseStatusEnum.Pending)
                 .Include(e => e.Expenses)
+                .ThenInclude(expense => expense.Category)
                 .ToList();
 
             var response = _mapper.Map<List<ExpenseFormResponse>>(expenseForms);
@@ -164,6 +175,7 @@ namespace Web.Api.Business.Query.ExpenseFormQuery
                 .Where(e => e.IsDeleted == false)
                 .Where(e => e.ExpenseStatusEnum == ExpenseStatusEnum.Approved)
                 .Include(e => e.Expenses)
+                .ThenInclude(expense => expense.Category)
                 .ToList();
 
             var response = _mapper.Map<List<ExpenseFormResponse>>(expenseForms);
@@ -191,6 +203,7 @@ namespace Web.Api.Business.Query.ExpenseFormQuery
             var expenseForms = _dbContext.VpExpenseForms
                 .Where(e => !e.IsDeleted && e.EmployeeId == Int32.Parse(userId))
                 .Include(e => e.Expenses)
+                .ThenInclude(expense => expense.Category)
                 .OrderByDescending(e => e.CreatedDate) 
                 .ToList();
 
@@ -221,5 +234,32 @@ namespace Web.Api.Business.Query.ExpenseFormQuery
             return Task.FromResult(ApiResponse<EmployeeExpenseInfoVM>.Success(response));
         }
 
+        public Task<ApiResponse<List<ExpenseFormResponse>>> Handle(GetExpenseFormsByAdmin request, CancellationToken cancellationToken)
+        {
+            var userId = _httpContextAccessor.HttpContext?.User.Claims.FirstOrDefault(c => c.Type == "Id")?.Value;
+
+            if (userId is null)
+                return Task.FromResult(ApiResponse<List<ExpenseFormResponse>>.Failure("User Id not found in token"));
+
+            var expenseForms = _dbContext.VpExpenseForms
+                .Where(e => e.IsDeleted == false)
+                .Include(e => e.Expenses)
+                .ThenInclude(expense => expense.Category)
+                .ToList();
+
+            var response = _mapper.Map<List<ExpenseFormResponse>>(expenseForms);
+
+            foreach (var item in response)
+            {
+                item.EmployeeFullName = _dbContext.VpEmployees.FirstOrDefault(e => e.Id == item.EmployeeId)?.Name + " " + _dbContext.VpEmployees.FirstOrDefault(e => e.Id == item.EmployeeId)?.Surname;
+            }
+
+            foreach (var item in response)
+            {
+                item.ManagerFullName = _dbContext.VpManagers.FirstOrDefault(e => e.Id == item.ManagerId)?.Name + " " + _dbContext.VpManagers.FirstOrDefault(e => e.Id == item.ManagerId)?.Surname;
+
+            }
+            return Task.FromResult(ApiResponse<List<ExpenseFormResponse>>.Success(response));
+        }
     }
 }

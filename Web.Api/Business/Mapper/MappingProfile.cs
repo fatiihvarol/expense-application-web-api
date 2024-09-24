@@ -27,22 +27,24 @@ namespace Web.Api.Business.Mapper
                 .ForMember(dest => dest.ExpenseStatus, opt => opt.MapFrom(src => src.ExpenseStatusEnum.ToString()))
                 .ForMember(dest => dest.Expenses, opt => opt.MapFrom(src => src.Expenses)); // Map nested list
 
-            // Mapping from VpExpense to ExpenseResponse
-            CreateMap<VpExpense, ExpenseResponse>();
+            CreateMap<VpExpense, ExpenseResponse>()
+             .ForMember(dest => dest.Category, opt => opt.MapFrom(src => src.Category));
+
             // Mapping from CreateExpenseFormCommand to VpExpenseForm
             CreateMap<ExpenseFormRequest, VpExpenseForm>()
-     .ForMember(dest => dest.CurrencyEnum, opt => opt.MapFrom(src => src.Currency))
-     .ForMember(dest => dest.ExpenseStatusEnum, opt => opt.MapFrom(src => src.ExpenseStatus))
-     .ForMember(dest => dest.RejectionDescription, opt => opt.MapFrom(src => src.RejectionDescription))
-     .ForMember(dest => dest.TotalAmount, opt => opt.MapFrom(src => src.TotalAmount))
-     .ForMember(dest => dest.Expenses, opt => opt.MapFrom(src => src.Expenses)); // Eğer `Expenses` listesi varsa
+             .ForMember(dest => dest.CurrencyEnum, opt => opt.MapFrom(src => src.Currency))
+             .ForMember(dest => dest.ExpenseStatusEnum, opt => opt.MapFrom(src => src.ExpenseStatus))
+             .ForMember(dest => dest.RejectionDescription, opt => opt.MapFrom(src => src.RejectionDescription))
+             .ForMember(dest => dest.TotalAmount, opt => opt.MapFrom(src => src.TotalAmount))
+             .ForMember(dest => dest.Expenses, opt => opt.MapFrom(src => src.Expenses)); // Eğer `Expenses` listesi varsa
 
 
             CreateMap<VpExpenseFormHistory, ExpenseFormHistoryVM>()
                      .ForMember(dest => dest.Action, opt => opt.MapFrom(src => src.Action.ToString()));
 
-                ;
 
+            CreateMap<ExpenseCategoryCreateRequest, VpExpenseCategory>();
+            CreateMap<VpExpenseCategory, ExpenseCategoryResponse>();
 
         }
     }

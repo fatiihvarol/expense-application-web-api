@@ -24,6 +24,13 @@ namespace Web.Api.Business.Query.ExpenseFormHistoryQuery
         {
             var expenseFormHistory = _context.VpExpenseFormHistories.Where(x => x.ExpenseFormId == request.ExpenseFormId).ToList();
             var response = _mapper.Map<List<ExpenseFormHistoryVM>>(expenseFormHistory);
+
+            foreach (var item in response)
+            {
+                item.FullName = _context.VpApplicationUsers.Where(x=>x.Id == item.MadeBy).FirstOrDefault()?.Name + " " +_context.VpApplicationUsers.Where(x=>x.Id == item.MadeBy).FirstOrDefault()?.Surname;
+                item.Date = item.Date.ToLocalTime();
+            }
+
             return Task.FromResult(ApiResponse<List<ExpenseFormHistoryVM>>.Success(response));
 
         }

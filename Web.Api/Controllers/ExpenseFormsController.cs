@@ -84,6 +84,15 @@ namespace Web.Api.Controllers
             var response = await _mediator.Send(query);
             return response.IsSuccess ? Ok(response) : BadRequest(response);
         }
+        // GET: api/ExpenseForms/ByAccountant
+        [HttpGet("ByAdmin")]
+        public async Task<IActionResult> GetByAdmin()
+
+        {
+            var query = new GetExpenseFormsByAdmin();
+            var response = await _mediator.Send(query);
+            return response.IsSuccess ? Ok(response) : BadRequest(response);
+        }
 
         // POST: api/ExpenseForms
         [HttpPost("Create")]
