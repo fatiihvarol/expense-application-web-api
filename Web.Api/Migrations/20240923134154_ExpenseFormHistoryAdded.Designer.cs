@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Web.Api.Data.AppDbContext;
 
@@ -11,9 +12,11 @@ using Web.Api.Data.AppDbContext;
 namespace Web.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20240923134154_ExpenseFormHistoryAdded")]
+    partial class ExpenseFormHistoryAdded
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -199,7 +202,95 @@ namespace Web.Api.Migrations
 
                     b.HasIndex("ExpenseFormId");
 
-                    b.ToTable("VpExpenseFormHistories");
+                    b.ToTable("ExpenseFormHistories");
+                });
+
+            modelBuilder.Entity("Web.Api.Data.Entities.VpExpenseFormLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ExpenseFormId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("NewCurrency")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("NewExpenseStatus")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("NewTotalAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int?>("OldCurrency")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("OldExpenseStatus")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("OldTotalAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpenseFormId");
+
+                    b.ToTable("ExpenseFormLogs");
+                });
+
+            modelBuilder.Entity("Web.Api.Data.Entities.VpTransaction", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Comments")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CreateBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("CurrencyEnum")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ExpenseFormId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("IbanNumber")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpenseFormId")
+                        .IsUnique();
+
+                    b.ToTable("VpTransactions");
                 });
 
             modelBuilder.Entity("Web.Api.Data.Entities.VpAccountant", b =>
@@ -283,6 +374,28 @@ namespace Web.Api.Migrations
                     b.Navigation("ExpenseForm");
                 });
 
+            modelBuilder.Entity("Web.Api.Data.Entities.VpExpenseFormLog", b =>
+                {
+                    b.HasOne("Web.Api.Data.Entities.VpExpenseForm", "VpExpenseForm")
+                        .WithMany("VpExpenseFormLogs")
+                        .HasForeignKey("ExpenseFormId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("VpExpenseForm");
+                });
+
+            modelBuilder.Entity("Web.Api.Data.Entities.VpTransaction", b =>
+                {
+                    b.HasOne("Web.Api.Data.Entities.VpExpenseForm", "ExpenseForm")
+                        .WithOne()
+                        .HasForeignKey("Web.Api.Data.Entities.VpTransaction", "ExpenseFormId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ExpenseForm");
+                });
+
             modelBuilder.Entity("Web.Api.Data.Entities.VpEmployee", b =>
                 {
                     b.HasOne("Web.Api.Data.Entities.VpManager", "Manager")
@@ -299,6 +412,8 @@ namespace Web.Api.Migrations
                     b.Navigation("Expenses");
 
                     b.Navigation("VpExpenseFormHistories");
+
+                    b.Navigation("VpExpenseFormLogs");
                 });
 
             modelBuilder.Entity("Web.Api.Data.Entities.VpEmployee", b =>

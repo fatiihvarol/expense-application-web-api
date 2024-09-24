@@ -18,7 +18,7 @@ namespace Web.Api.Business.Query.ExpenseFormQuery
           IRequestHandler<GetMyExpensesQuery, ApiResponse<List<ExpenseFormResponse>>>,
         IRequestHandler<GetExpenseFormsByManager, ApiResponse<List<ExpenseFormResponse>>>,
         IRequestHandler<GetExpenseFormsByAccountant, ApiResponse<List<ExpenseFormResponse>>>,
-        IRequestHandler<GetEmployeeExpenseInfoQuery, ApiResponse<EmployeeExpenseInfoResponse>>
+        IRequestHandler<GetEmployeeExpenseInfoQuery, ApiResponse<EmployeeExpenseInfoVM>>
     {
         private readonly AppDbContext _dbContext;
         private readonly IMapper _mapper;
@@ -181,12 +181,12 @@ namespace Web.Api.Business.Query.ExpenseFormQuery
             return Task.FromResult(ApiResponse<List<ExpenseFormResponse>>.Success(response));
         }
 
-        public  Task<ApiResponse<EmployeeExpenseInfoResponse>> Handle(GetEmployeeExpenseInfoQuery request, CancellationToken cancellationToken)
+        public  Task<ApiResponse<EmployeeExpenseInfoVM>> Handle(GetEmployeeExpenseInfoQuery request, CancellationToken cancellationToken)
         {
             var userId = _httpContextAccessor.HttpContext?.User.Claims.FirstOrDefault(c => c.Type == "Id")?.Value;
 
             if (userId is null)
-                return Task.FromResult(ApiResponse<EmployeeExpenseInfoResponse>.Failure("User Id not found in token"));
+                return Task.FromResult(ApiResponse<EmployeeExpenseInfoVM>.Failure("User Id not found in token"));
 
             var expenseForms = _dbContext.VpExpenseForms
                 .Where(e => !e.IsDeleted && e.EmployeeId == Int32.Parse(userId))
@@ -209,7 +209,7 @@ namespace Web.Api.Business.Query.ExpenseFormQuery
             var lastThreeExpenseForms = _mapper.Map<ICollection<ExpenseFormResponse>>(temp);
 
 
-            var response = new EmployeeExpenseInfoResponse
+            var response = new EmployeeExpenseInfoVM
             {
                 PendingApprovalCount = expenseForms.Count(e => e.ExpenseStatusEnum == ExpenseStatusEnum.Pending),
                 ApprovedCount = expenseForms.Count(e => e.ExpenseStatusEnum == ExpenseStatusEnum.Approved),
@@ -218,7 +218,7 @@ namespace Web.Api.Business.Query.ExpenseFormQuery
                 LastExpenseForms = lastThreeExpenseForms // Son 3 formu ekleme
             };
 
-            return Task.FromResult(ApiResponse<EmployeeExpenseInfoResponse>.Success(response));
+            return Task.FromResult(ApiResponse<EmployeeExpenseInfoVM>.Success(response));
         }
 
     }

@@ -2,7 +2,7 @@
 
 namespace Web.Api.Schema
 {
-    public class EmployeeExpenseInfoResponse
+    public class EmployeeExpenseInfoVM
     {
         public int PendingApprovalCount { get; set; }
         public int ApprovedCount { get; set; }

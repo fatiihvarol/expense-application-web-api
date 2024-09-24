@@ -17,8 +17,9 @@ namespace Web.Api.Data.AppDbContext
         public DbSet<VpAccountant> VpAccountants { get; set; }
         public DbSet<VpExpense> VpExpenses { get; set; }
         public DbSet<VpExpenseForm> VpExpenseForms { get; set; }
-        public DbSet<VpTransaction> VpTransactions { get; set; }
-        public DbSet<VpExpenseFormLog> ExpenseFormLogs { get; set; }
+        public DbSet<VpExpenseFormHistory> VpExpenseFormHistories { get; set; }
+
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -65,17 +66,10 @@ namespace Web.Api.Data.AppDbContext
                 .HasForeignKey(e => e.ExpenseFormId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // ExpenseForm - Transaction (One-to-One)
-            modelBuilder.Entity<VpTransaction>()
-                .HasOne(t => t.ExpenseForm)
-                .WithOne()
-                .HasForeignKey<VpTransaction>(t => t.ExpenseFormId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            modelBuilder.Entity<VpExpenseFormLog>()
-                .HasOne(log => log.VpExpenseForm)           
-                .WithMany(form => form.VpExpenseFormLogs)  
-                .HasForeignKey(log => log.ExpenseFormId)    
+            modelBuilder.Entity<VpExpenseFormHistory>()
+                .HasOne(history => history.ExpenseForm)
+                .WithMany(form => form.VpExpenseFormHistories)
+                .HasForeignKey(history => history.ExpenseFormId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             base.OnModelCreating(modelBuilder);

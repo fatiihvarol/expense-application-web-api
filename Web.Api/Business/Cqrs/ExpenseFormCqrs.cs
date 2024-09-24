@@ -25,6 +25,6 @@ namespace Web.Api.Business.Cqrs
 
     public record GetExpenseByIdQuery(int Id) : IRequest<ApiResponse<ExpenseFormResponse>>;
 
-    public record GetEmployeeExpenseInfoQuery () : IRequest<ApiResponse<EmployeeExpenseInfoResponse>>;
+    public record GetEmployeeExpenseInfoQuery () : IRequest<ApiResponse<EmployeeExpenseInfoVM>>;
     public record GetExpensesByParametersQuery(int EmployeeId, string? Status, decimal Amount) : IRequest<ApiResponse<List<ExpenseFormResponse>>>;
 }

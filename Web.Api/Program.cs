@@ -7,6 +7,7 @@ using System.Text;
 using Serilog;
 using Web.Api.Data.AppDbContext;
 using Microsoft.AspNetCore.Diagnostics;
+using Web.Api.Business.Helper;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,6 +25,7 @@ Log.Logger = new LoggerConfiguration()
 // Builder işlemleri
 builder.Host.UseSerilog(); // Serilog'u kullanmak için
 
+builder.Services.AddScoped<ExpenseFormHistoryHelper>();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>

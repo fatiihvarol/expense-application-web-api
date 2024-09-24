@@ -9,6 +9,7 @@ using Web.Api.Schema;
 using Web.Api.Data.AppDbContext;
 using Web.Api.Business.Cqrs;
 using Web.Api.Base.Enums;
+using Web.Api.Business.Helper;
 
 namespace Web.Api.Business.Command.ExpenseFormCommand
 {
@@ -23,12 +24,14 @@ namespace Web.Api.Business.Command.ExpenseFormCommand
         private readonly AppDbContext _dbContext;
         private readonly IMapper _mapper;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly ExpenseFormHistoryHelper _expenseFormHistoryHelper;
 
-        public ExpenseFormCommandHandler(AppDbContext dbContext, IMapper mapper, IHttpContextAccessor httpContextAccessor)
+        public ExpenseFormCommandHandler(AppDbContext dbContext, IMapper mapper, IHttpContextAccessor httpContextAccessor, ExpenseFormHistoryHelper expenseFormHistoryHelper)
         {
             _dbContext = dbContext;
             _mapper = mapper;
             _httpContextAccessor = httpContextAccessor;
+            _expenseFormHistoryHelper = expenseFormHistoryHelper;
         }
 
         public async Task<ApiResponse<ExpenseFormResponse>> Handle(CreateExpenseFormCommand request, CancellationToken cancellationToken)
@@ -41,7 +44,6 @@ namespace Web.Api.Business.Command.ExpenseFormCommand
                 return ApiResponse<ExpenseFormResponse>.Failure("User Id not found in token");
             }
 
-            // User Id ile veritabanında Employee ve Manager bilgilerini sorgulama
             var employee = await _dbContext.VpEmployees.FirstOrDefaultAsync(e => e.Id == Int32.Parse(userId), cancellationToken);
             if (employee == null)
             {
@@ -79,6 +81,9 @@ namespace Web.Api.Business.Command.ExpenseFormCommand
             var fromdb = _dbContext.VpExpenseForms.Add(expenseForm);
             await _dbContext.SaveChangesAsync(cancellationToken);
 
+            await _expenseFormHistoryHelper.AddHistoryLog(fromdb.Entity.Id, userId, HistoryActionEnum.Created, cancellationToken,_dbContext);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+
             var response = _mapper.Map<ExpenseFormResponse>(expenseForm);
             return ApiResponse<ExpenseFormResponse>.Success(response);
         }
@@ -109,7 +114,7 @@ namespace Web.Api.Business.Command.ExpenseFormCommand
                 }
             }
             expenseForm.RejectionDescription = null;
-            _dbContext.VpExpenseForms.Update(expenseForm); 
+            _dbContext.VpExpenseForms.Update(expenseForm);
             await _dbContext.SaveChangesAsync(cancellationToken);
 
             var response = _mapper.Map<ExpenseFormResponse>(expenseForm);

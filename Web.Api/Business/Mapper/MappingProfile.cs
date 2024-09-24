@@ -38,6 +38,12 @@ namespace Web.Api.Business.Mapper
      .ForMember(dest => dest.Expenses, opt => opt.MapFrom(src => src.Expenses)); // Eğer `Expenses` listesi varsa
 
 
+            CreateMap<VpExpenseFormHistory, ExpenseFormHistoryVM>()
+                     .ForMember(dest => dest.Action, opt => opt.MapFrom(src => src.Action.ToString()));
+
+                ;
+
+
         }
     }
 }
