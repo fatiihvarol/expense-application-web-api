@@ -156,6 +156,11 @@ namespace Web.Api.Business.Command.ExpenseFormCommand
             expenseForm.ModifiedDate = DateTime.Now;
             expenseForm.ModifiedBy = userId;
 
+            if (expenseForm.EmployeeId != Int32.Parse(userId))
+            {
+                return ApiResponse<object>.Failure("You are not authorized to delete this expense form");
+            }
+
             if (expenseForm.Expenses != null)
             {
                 foreach (var expense in expenseForm.Expenses)

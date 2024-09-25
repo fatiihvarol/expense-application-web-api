@@ -30,6 +30,7 @@ namespace Web.Api.Controllers
             return response.IsSuccess ? Ok(response) : BadRequest(response);
         }
         [HttpGet("GetMyExpenseForms")]
+        [Authorize(Roles = "Employee")]
         public async Task<IActionResult> GetMyExpenses()
         {
             var query = new GetMyExpensesQuery();
@@ -48,6 +49,7 @@ namespace Web.Api.Controllers
 
         // GET: api/ExpenseForms/{id}
         [HttpGet("{id}")]
+        [Authorize]
         public async Task<IActionResult> GetById(int id)
         {
             var query = new GetExpenseByIdQuery(id);
@@ -68,6 +70,7 @@ namespace Web.Api.Controllers
         }
         // GET: api/ExpenseForms/ByManager
         [HttpGet("ByManager")]
+        [Authorize(Roles = "Manager")]
         public async Task<IActionResult> GetByManager()
 
         {
@@ -77,6 +80,7 @@ namespace Web.Api.Controllers
         }
         // GET: api/ExpenseForms/ByAccountant
         [HttpGet("ByAccountant")]
+        [Authorize(Roles = "Accountant")]
         public async Task<IActionResult> GetByAccountant()
 
         {
@@ -86,6 +90,7 @@ namespace Web.Api.Controllers
         }
         // GET: api/ExpenseForms/ByAccountant
         [HttpGet("ByAdmin")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetByAdmin()
 
         {
@@ -96,6 +101,7 @@ namespace Web.Api.Controllers
 
         // POST: api/ExpenseForms
         [HttpPost("Create")]
+        [Authorize(Roles = "Employee")]
         public async Task<IActionResult> Create([FromBody] ExpenseFormRequest request)
         {
             var command = new CreateExpenseFormCommand(request);
@@ -105,6 +111,7 @@ namespace Web.Api.Controllers
 
         // PUT: api/ExpenseForms/{id}
         [HttpPut("{id}")]
+        [Authorize(Roles = "Employee")]
         public async Task<IActionResult> Update(int id, [FromBody] ExpenseFormRequest request)
         {
             var command = new UpdateExpenseFormCommand(id, request);
@@ -115,6 +122,7 @@ namespace Web.Api.Controllers
 
         // DELETE: api/ExpenseForms/{id}
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Employee")]
         public async Task<IActionResult> Delete(int id)
         {
             var command = new DeleteExpenseFormCommand(id);
@@ -122,6 +130,7 @@ namespace Web.Api.Controllers
             return response.IsSuccess ? NoContent() : BadRequest(response);
         }
         [HttpPut("Reject/{id}")]
+        [Authorize(Roles = "Manager")]
         public async Task<IActionResult> Decline(int id, [FromBody] string rejectionDescription)
         {
             var command = new DeclineExpenseFormCommand(id, rejectionDescription);
@@ -146,6 +155,7 @@ namespace Web.Api.Controllers
             return response;
         }
         [HttpGet("GetEmployeeExpenseInfo")]
+        [Authorize(Roles = "Employee")]
         public async Task<IActionResult> GetEmployeeExpenseInfo()
         {
             var query = new GetEmployeeExpenseInfoQuery();

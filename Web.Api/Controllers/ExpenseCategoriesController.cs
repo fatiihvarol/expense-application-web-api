@@ -1,4 +1,5 @@
 ﻿using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Web.Api.Business.Cqrs;
@@ -8,6 +9,7 @@ namespace Web.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class ExpenseCategoriesController : ControllerBase
     {
         private readonly IMediator mediator;
