@@ -145,18 +145,18 @@ namespace Web.Api.Business.Command.TokenCommand
             // Eski refresh token'ı geçersiz kıl
             refreshToken.IsRevoked = true;
             _dbContext.VpRefreshTokens.Update(refreshToken);
-            await _dbContext.SaveChangesAsync(cancellationToken); // Değişiklikleri kaydet
-
+            await _dbContext.SaveChangesAsync(cancellationToken); 
+            var refreshTokenExpirationInDays = int.Parse(_configuration["Token:RefreshTokenExpirationInDays"]);
             // Yeni refresh token'ı kaydet
             var vpRefreshToken = new VpRefreshToken
             {
                 Token = newRefreshToken,
-                ExpiresAt = DateTime.UtcNow.AddDays(30), // Örneğin 30 gün geçerlilik süresi
+                ExpiresAt = DateTime.UtcNow.AddDays(refreshTokenExpirationInDays), 
                 UserId = user.Id
             };
 
             await _dbContext.VpRefreshTokens.AddAsync(vpRefreshToken);
-            await _dbContext.SaveChangesAsync(cancellationToken); // Değişiklikleri kaydet
+            await _dbContext.SaveChangesAsync(cancellationToken); 
 
             // Yanıt modeli hazırla
             var response = new AuthResponseVM
