@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Web.Api.Data.AppDbContext;
 
@@ -11,9 +12,11 @@ using Web.Api.Data.AppDbContext;
 namespace Web.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20240926095512_DateAddedExpense")]
+    partial class DateAddedExpense
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -241,34 +244,6 @@ namespace Web.Api.Migrations
                     b.ToTable("VpExpenseFormHistories");
                 });
 
-            modelBuilder.Entity("Web.Api.Data.Entities.VpRefreshToken", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<bool>("IsRevoked")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Token")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("VpRefreshTokens");
-                });
-
             modelBuilder.Entity("Web.Api.Data.Entities.VpAccountant", b =>
                 {
                     b.HasBaseType("Web.Api.Data.Entities.VpApplicationUser");
@@ -358,17 +333,6 @@ namespace Web.Api.Migrations
                     b.Navigation("ExpenseForm");
                 });
 
-            modelBuilder.Entity("Web.Api.Data.Entities.VpRefreshToken", b =>
-                {
-                    b.HasOne("Web.Api.Data.Entities.VpApplicationUser", "User")
-                        .WithMany("RefreshTokens")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("Web.Api.Data.Entities.VpEmployee", b =>
                 {
                     b.HasOne("Web.Api.Data.Entities.VpManager", "Manager")
@@ -378,11 +342,6 @@ namespace Web.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Manager");
-                });
-
-            modelBuilder.Entity("Web.Api.Data.Entities.VpApplicationUser", b =>
-                {
-                    b.Navigation("RefreshTokens");
                 });
 
             modelBuilder.Entity("Web.Api.Data.Entities.VpExpenseForm", b =>

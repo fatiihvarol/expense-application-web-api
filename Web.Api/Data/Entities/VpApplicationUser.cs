@@ -13,5 +13,7 @@ namespace Web.Api.Data.Entities
         public string? Name { get; set; }
         public string? Surname { get; set; }
         public DateTime DateofBirth { get; set; }
+
+        public ICollection<VpRefreshToken> RefreshTokens { get; set; }
     }
 }

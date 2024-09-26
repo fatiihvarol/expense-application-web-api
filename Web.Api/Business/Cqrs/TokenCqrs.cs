@@ -4,5 +4,7 @@ using Web.Api.Schema.Authentication;
 
 namespace Web.Api.Business.Cqrs
 {
-    public record CreateTokenCommand(LoginVM Model) : IRequest<ApiResponse<AuthResponseVM>>;
+    public record CreateTokenCommand(LoginRequest Model) : IRequest<ApiResponse<AuthResponseVM>>;
+    public record RefreshTokenCommand(RefreshTokenRequest Model) : IRequest<ApiResponse<AuthResponseVM>>;
+
 }

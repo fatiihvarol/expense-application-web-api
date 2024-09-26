@@ -21,14 +21,25 @@ namespace Web.Api.Controllers
             _mediator = mediator;
         }
 
-        [HttpPost("login")]
-        public async Task<ApiResponse<AuthResponseVM>> Post([FromBody] LoginVM request)
+        [HttpPost("Login")]
+        public async Task<ApiResponse<AuthResponseVM>> Post([FromBody] LoginRequest request)
         {
             var operation = new CreateTokenCommand(request);
             var result = await _mediator.Send(operation);
             return result;
         }
-       
+
+        [HttpPost("Refresh")]
+        public async Task<ApiResponse<AuthResponseVM>> RefreshToken([FromBody] RefreshTokenRequest request)
+        {
+            // RefreshTokenCommand nesnesi oluştur
+            var operation = new RefreshTokenCommand(request);
+            // Komutu Mediator üzerinden gönder
+            var result = await _mediator.Send(operation);
+            return result;
+        }
+
+
 
     }
 }

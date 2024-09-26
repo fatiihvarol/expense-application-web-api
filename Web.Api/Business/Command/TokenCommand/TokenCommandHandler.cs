@@ -15,12 +15,13 @@ using Web.Api.Schema.Authentication;
 namespace Web.Api.Business.Command.TokenCommand
 {
     public class TokenCommandHandler :
-        IRequestHandler<CreateTokenCommand, ApiResponse<AuthResponseVM>>
+        IRequestHandler<CreateTokenCommand, ApiResponse<AuthResponseVM>>,
+        IRequestHandler<RefreshTokenCommand, ApiResponse<AuthResponseVM>>
     {
         private readonly IConfiguration _configuration;
         private readonly AppDbContext _dbContext;
 
-        public TokenCommandHandler(IConfiguration configuration,AppDbContext dbContext)
+        public TokenCommandHandler(IConfiguration configuration, AppDbContext dbContext)
         {
             _configuration = configuration;
             _dbContext = dbContext;
@@ -37,8 +38,8 @@ namespace Web.Api.Business.Command.TokenCommand
             var hashedPassword = Md5Extension.Create(request.Model.Password);
 
             // Fetch user from the database
-            var user = _dbContext.VpApplicationUsers
-                .FirstOrDefault(u => u.Email == request.Model.Email && u.Password == hashedPassword);
+            var user = await _dbContext.VpApplicationUsers
+                .FirstOrDefaultAsync(u => u.Email == request.Model.Email && u.Password == hashedPassword);
 
             // Handle case where user is not found
             if (user == null)
@@ -57,11 +58,22 @@ namespace Web.Api.Business.Command.TokenCommand
                 issuer: _configuration["Token:Issuer"],
                 audience: _configuration["Token:Audience"],
                 claims: claims,
-                expires: DateTime.Now.AddMinutes(tokenExpirationInMinutes),
+                expires: DateTime.UtcNow.AddMinutes(tokenExpirationInMinutes),
                 signingCredentials: creds
             );
 
             var refreshToken = GenerateRefreshToken();
+
+            // Save the refresh token to the database
+            var vpRefreshToken = new VpRefreshToken
+            {
+                Token = refreshToken,
+                ExpiresAt = DateTime.UtcNow.AddDays(30), // Örneğin 30 gün geçerlilik süresi
+                UserId = user.Id
+            };
+
+            await _dbContext.VpRefreshTokens.AddAsync(vpRefreshToken);
+            await _dbContext.SaveChangesAsync(cancellationToken); // Değişiklikleri kaydet
 
             // Prepare the response model
             var response = new AuthResponseVM
@@ -74,7 +86,6 @@ namespace Web.Api.Business.Command.TokenCommand
             // Return a successful response
             return ApiResponse<AuthResponseVM>.Success(response);
         }
-
 
         private Claim[] GetClaims(VpApplicationUser user)
         {
@@ -94,6 +105,68 @@ namespace Web.Api.Business.Command.TokenCommand
                 rng.GetBytes(randomNumber);
                 return Convert.ToBase64String(randomNumber);
             }
+        }
+
+        public async Task<ApiResponse<AuthResponseVM>> Handle(RefreshTokenCommand request, CancellationToken cancellationToken)
+        {
+            // Refresh token kontrolü
+            var refreshToken = await _dbContext.VpRefreshTokens
+                .FirstOrDefaultAsync(rt => rt.Token == request.Model.RefreshToken && !rt.IsRevoked && rt.ExpiresAt > DateTime.UtcNow);
+
+            if (refreshToken == null)
+            {
+                return ApiResponse<AuthResponseVM>.Failure("Invalid refresh token.");
+            }
+
+            // Kullanıcı bilgilerini al
+            var user = await _dbContext.VpApplicationUsers.FindAsync(refreshToken.UserId);
+            if (user == null)
+            {
+                return ApiResponse<AuthResponseVM>.Failure("User not found.");
+            }
+
+            // Yeni token oluştur
+            var tokenExpirationInMinutes = int.Parse(_configuration["Token:TokenExpirationInMinutes"]);
+            Claim[] claims = GetClaims(user);
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Token:Secret"]));
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+            var newToken = new JwtSecurityToken(
+                issuer: _configuration["Token:Issuer"],
+                audience: _configuration["Token:Audience"],
+                claims: claims,
+                expires: DateTime.UtcNow.AddMinutes(tokenExpirationInMinutes),
+                signingCredentials: creds
+            );
+
+            var newRefreshToken = GenerateRefreshToken();
+
+            // Eski refresh token'ı geçersiz kıl
+            refreshToken.IsRevoked = true;
+            _dbContext.VpRefreshTokens.Update(refreshToken);
+            await _dbContext.SaveChangesAsync(cancellationToken); // Değişiklikleri kaydet
+
+            // Yeni refresh token'ı kaydet
+            var vpRefreshToken = new VpRefreshToken
+            {
+                Token = newRefreshToken,
+                ExpiresAt = DateTime.UtcNow.AddDays(30), // Örneğin 30 gün geçerlilik süresi
+                UserId = user.Id
+            };
+
+            await _dbContext.VpRefreshTokens.AddAsync(vpRefreshToken);
+            await _dbContext.SaveChangesAsync(cancellationToken); // Değişiklikleri kaydet
+
+            // Yanıt modeli hazırla
+            var response = new AuthResponseVM
+            {
+                Token = new JwtSecurityTokenHandler().WriteToken(newToken),
+                RefreshToken = newRefreshToken,
+                ExpiresAt = newToken.ValidTo
+            };
+
+            return ApiResponse<AuthResponseVM>.Success(response);
         }
     }
 }

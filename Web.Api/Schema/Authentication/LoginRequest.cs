@@ -2,7 +2,7 @@
 
 namespace Web.Api.Schema.Authentication
 {
-    public class LoginVM
+    public class LoginRequest
     {
         [Required(ErrorMessage = "Email is required")]
         public string? Email { get; set; }

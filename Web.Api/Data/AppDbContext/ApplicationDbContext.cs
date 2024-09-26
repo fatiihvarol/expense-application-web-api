@@ -20,15 +20,17 @@ namespace Web.Api.Data.AppDbContext
         public DbSet<VpExpenseForm> VpExpenseForms { get; set; }
         public DbSet<VpExpenseFormHistory> VpExpenseFormHistories { get; set; }
         public DbSet<VpExpenseCategory> VpExpenseCategories { get; set; }
+        public DbSet<VpRefreshToken> VpRefreshTokens { get; set; }
+
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            
+
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-          
+
             modelBuilder.Entity<VpApplicationUser>()
             .ToTable("VpApplicationUser")
             .HasDiscriminator<UserRoleEnum>("Role")
@@ -82,6 +84,12 @@ namespace Web.Api.Data.AppDbContext
                 .WithMany()
                 .HasForeignKey(e => e.CategoryId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<VpApplicationUser>()
+                .HasMany(u => u.RefreshTokens)
+                .WithOne(t => t.User)
+                .HasForeignKey(t => t.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             base.OnModelCreating(modelBuilder);
         }

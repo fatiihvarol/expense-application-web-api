@@ -11,6 +11,8 @@ namespace Web.Api.Schema
         public string? Location { get; set; }
         public int CategoryId { get; set; }
         public string? Category { get; set; }
+        public DateTime Date { get; set; }
+
         public string? ReceiptNumber { get; set; }
     }
     public class ExpenseResponse
@@ -19,6 +21,7 @@ namespace Web.Api.Schema
         public string? Description { get; set; }
         public string? Location { get; set; }
         public ExpenseCategoryResponse Category { get; set; }
+        public DateTime Date { get; set; }
         public string? ReceiptNumber { get; set; }
         public int ExpenseFormId { get; set; }
     }
