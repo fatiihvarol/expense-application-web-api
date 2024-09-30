@@ -27,6 +27,11 @@ namespace Web.Api.Controllers
         {
             var response = await _mediator.Send(new GetBarChartReportQuery());
             return Ok(response);
+        }   [HttpGet("ByStatus")]
+        public async Task<IActionResult> GetByStatus()
+        {
+            var response = await _mediator.Send(new GetStatusReportQuery());
+            return Ok(response);
         }
     }
 }

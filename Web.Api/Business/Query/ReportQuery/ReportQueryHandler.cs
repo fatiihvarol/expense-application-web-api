@@ -10,7 +10,8 @@ namespace Web.Api.Business.Query.ReportQuery
 {
     public class ReportQueryHandler :
         IRequestHandler<GetPieChartReportQuery, ApiResponse<List<PieChartReportVM>>>,
-        IRequestHandler<GetBarChartReportQuery, ApiResponse<List<BarChartReportVM>>>
+        IRequestHandler<GetBarChartReportQuery, ApiResponse<List<BarChartReportVM>>>,
+        IRequestHandler<GetStatusReportQuery, ApiResponse<List<StatusReportVM>>>
     {
         private readonly AppDbContext _context;
         private readonly IMapper _mapper;
@@ -86,5 +87,50 @@ namespace Web.Api.Business.Query.ReportQuery
 
             return ApiResponse<List<BarChartReportVM>>.Success(barChartData);
         }
+        public async Task<ApiResponse<List<StatusReportVM>>> Handle(GetStatusReportQuery request, CancellationToken cancellationToken)
+        {
+
+          
+                // Harcama formlarını ve ilgili harcamaları dahil ederek sorguyu oluşturuyoruz
+                var expenseData = await _context.VpExpenseForms
+                    .Include(ef => ef.Expenses)  // Harcamalar ile ExpenseForm'u ilişkilendiriyoruz
+                    .SelectMany(ef => ef.Expenses.Select(e => new
+                    {
+                        ef.ExpenseStatusEnum,  // Statü (ExpenseForm'un durumu)
+                        ef.CurrencyEnum,  // Para birimi (ExpenseForm'un para birimi)
+                        e.Amount       // Harcama miktarı
+                    }))
+                    .GroupBy(e => new { e.ExpenseStatusEnum, e.CurrencyEnum })  // Statü ve para birimine göre grupluyoruz
+                    .Select(g => new
+                    {
+                        Status = g.Key.ExpenseStatusEnum.ToString(),  // Statü
+                        Currency = g.Key.CurrencyEnum.ToString(),  // Para birimi
+                        TotalAmount = g.Sum(e => e.Amount),  // Toplam harcama miktarı
+                        Count = g.Count()  // Toplam işlem sayısı
+                    })
+                    .ToListAsync(cancellationToken);
+
+                // Statüye göre veriyi grupluyoruz ve her statü için para birimine göre harcamaları sözlük yapısına yerleştiriyoruz
+                var statusReportData = expenseData
+                    .GroupBy(ed => ed.Status)  // Verileri statüye göre grupluyoruz
+                    .Select(g => new StatusReportVM
+                    {
+                        Status = g.Key,  // Statü adı
+                        Count = g.Sum(x => x.Count),  // Statüdeki toplam işlem sayısı
+                        AmountsByCurrency = g.ToDictionary(
+                            x => x.Currency,  // Para birimi
+                            x => x.TotalAmount  // Toplam harcama miktarı
+                        )
+                    })
+                    .ToList();
+
+                // Veriyi başarıyla geri döndürüyoruz
+                return ApiResponse<List<StatusReportVM>>.Success(statusReportData);
+            
+
+
+
+        }
+
     }
 }

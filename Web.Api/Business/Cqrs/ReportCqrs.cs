@@ -8,5 +8,7 @@ namespace Web.Api.Business.Cqrs
 
     public record GetPieChartReportQuery() : IRequest<ApiResponse<List<PieChartReportVM>>>;
     public record GetBarChartReportQuery() : IRequest<ApiResponse<List<BarChartReportVM>>>;
+    public record GetStatusReportQuery() : IRequest<ApiResponse<List<StatusReportVM>>>;
+
 
 }

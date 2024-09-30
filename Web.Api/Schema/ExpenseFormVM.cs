@@ -28,6 +28,7 @@ namespace Web.Api.Schema
         public int ManagerId { get; set; }
         public string? ManagerFullName { get; set; }
         public int? AccountantId { get; set; }
+        public DateTime CreatedDate { get; set; }
         public ICollection<ExpenseResponse>? Expenses { get; set; }
     }
 
