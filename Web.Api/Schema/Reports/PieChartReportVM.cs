@@ -4,6 +4,6 @@
     {
         public int Id { get; set; }
         public decimal TotalAmount { get; set; }
-        public  string CategoryName { get; set; }
+        public  string? CategoryName { get; set; }
     }
 }

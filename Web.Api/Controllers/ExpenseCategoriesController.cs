@@ -20,6 +20,7 @@ namespace Web.Api.Controllers
         }
 
         [HttpGet]
+        [Authorize]
         public async Task<IActionResult> Get()
         {
             var response = await mediator.Send(new GetAllExpenseCategoryQuery());
@@ -27,6 +28,7 @@ namespace Web.Api.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Post([FromBody] ExpenseCategoryCreateRequest model)
         {
             var response = await mediator.Send(new ExpenseCategoryCreateCommand(model));

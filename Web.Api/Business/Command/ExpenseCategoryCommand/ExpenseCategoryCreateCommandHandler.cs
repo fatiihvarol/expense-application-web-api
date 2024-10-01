@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using MediatR;
+using Web.Api.Base.Message;
 using Web.Api.Base.Response;
 using Web.Api.Business.Cqrs;
 using Web.Api.Data.AppDbContext;
@@ -24,7 +25,7 @@ namespace Web.Api.Business.Command.ExpenseCategoryCommand
           
             if (string.IsNullOrEmpty(request.Model.Name))
             {
-                return  ApiResponse<ExpenseCategoryResponse>.Failure( "Name is required");
+                return  ApiResponse<ExpenseCategoryResponse>.Failure( ErrorMessage.ExpenseCategoryErrorMessage.NameRequiredError);
             }
             var category = _mapper.Map<ExpenseCategoryCreateRequest, VpExpenseCategory>(request.Model);
 

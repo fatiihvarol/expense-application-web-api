@@ -8,11 +8,16 @@ using Serilog;
 using Web.Api.Data.AppDbContext;
 using Microsoft.AspNetCore.Diagnostics;
 using Web.Api.Business.Helper;
+using Web.Api.Business.Validation;
+using Microsoft.AspNetCore.Identity;
+using FluentValidation.AspNetCore;
+using FluentValidation;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Serilog yapılandırması
 Log.Logger = new LoggerConfiguration()
-    .MinimumLevel.Information() 
+    .MinimumLevel.Information()
     .WriteTo.Console()
     .WriteTo.MSSqlServer(
         connectionString: builder.Configuration.GetConnectionString("DefaultConnection"),
@@ -21,13 +26,14 @@ Log.Logger = new LoggerConfiguration()
     )
     .CreateLogger();
 
+builder.Host.UseSerilog();
 
-// Builder işlemleri
-builder.Host.UseSerilog(); // Serilog'u kullanmak için
-
+// Servislerin eklenmesi
 builder.Services.AddScoped<ExpenseFormHistoryHelper>();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+
+// Swagger yapılandırması
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo { Title = "Your API", Version = "v1" });
@@ -57,6 +63,7 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
+// JWT yapılandırması
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
 {
     options.TokenValidationParameters = new TokenValidationParameters
@@ -68,17 +75,21 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
         ValidIssuer = builder.Configuration["Token:Issuer"],
         ValidAudience = builder.Configuration["Token:Audience"],
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Token:Secret"])),
-        ClockSkew = TimeSpan.Zero 
-
+        ClockSkew = TimeSpan.Zero
     };
 });
 
-builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+// Database yapılandırması
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Diğer servisler
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddMemoryCache();
 builder.Services.AddAutoMapper(typeof(Program));
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly()));
 
+// JSON döndürücüsü ayarları
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
@@ -86,6 +97,7 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
     });
 
+// CORS yapılandırması
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", builder =>
@@ -97,16 +109,29 @@ builder.Services.AddCors(options =>
     });
 });
 
+// FluentValidation'ın ASP.NET Core ile entegre edilmesi
+builder.Services.AddFluentValidationAutoValidation();
+builder.Services.AddValidatorsFromAssemblyContaining<VpExpenseFormValidator>();
+
+// FluentValidation konfigürasyonu
+builder.Services.AddControllers()
+    .AddFluentValidation(config =>
+    {
+        config.RegisterValidatorsFromAssemblyContaining<VpExpenseFormValidator>();
+    });
+
 var app = builder.Build();
 
+// Geliştirme ortamı kontrolleri
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+// Middleware eklenmesi
 app.UseMiddleware<LoggingMiddleware>();
 app.UseMiddleware<ExceptionMiddleware>();
-
 
 app.UseHttpsRedirection();
 app.UseCors("AllowFrontend");

@@ -1,6 +1,8 @@
 ﻿using AutoMapper;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Web.Api.Base.Message;
 using Web.Api.Base.Response;
 using Web.Api.Business.Cqrs;
 using Web.Api.Data.AppDbContext;
@@ -24,20 +26,26 @@ namespace Web.Api.Business.Query.ExpenseCategoryQuery
             _cache = cache;
         }
 
-        public Task<ApiResponse<List<ExpenseCategoryResponse>>> Handle(GetAllExpenseCategoryQuery request, CancellationToken cancellationToken)
+        public async Task<ApiResponse<List<ExpenseCategoryResponse>>> Handle(GetAllExpenseCategoryQuery request, CancellationToken cancellationToken)
         {
             // Try to get from cache
-            if (!_cache.TryGetValue(CacheKey, out List<VpExpenseCategory> categories))
+            if (!_cache.TryGetValue(CacheKey, out List<VpExpenseCategory>? categories))
             {
-                categories = _appDbContext.VpExpenseCategories.ToList();
+                categories = await _appDbContext.VpExpenseCategories.ToListAsync(cancellationToken);
 
-               
+
                 _cache.Set(CacheKey, categories, TimeSpan.FromMinutes(10));
+            }
+            if (categories == null)
+            {
+
+                return ApiResponse<List<ExpenseCategoryResponse>>.Failure(ErrorMessage.CasheErrorMessage.NoDataFoundError);
+
             }
 
             var response = _mapper.Map<List<VpExpenseCategory>, List<ExpenseCategoryResponse>>(categories);
 
-            return Task.FromResult(ApiResponse<List<ExpenseCategoryResponse>>.Success(response));
+            return ApiResponse<List<ExpenseCategoryResponse>>.Success(response);
         }
     }
 }

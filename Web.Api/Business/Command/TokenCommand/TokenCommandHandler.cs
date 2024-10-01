@@ -6,6 +6,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Web.Api.Base.Encryption;
+using Web.Api.Base.Message;
 using Web.Api.Base.Response;
 using Web.Api.Business.Cqrs;
 using Web.Api.Data.AppDbContext;
@@ -32,7 +33,7 @@ namespace Web.Api.Business.Command.TokenCommand
             // Validate the request model
             if (string.IsNullOrEmpty(request.Model.Password) || string.IsNullOrEmpty(request.Model.Email))
             {
-                return ApiResponse<AuthResponseVM>.Failure("Model can not be empty");
+                return ApiResponse<AuthResponseVM>.Failure(ErrorMessage.TokenErrorMessage.EmptyModelError);
             }
 
             var hashedPassword = Md5Extension.Create(request.Model.Password);
@@ -44,14 +45,14 @@ namespace Web.Api.Business.Command.TokenCommand
             // Handle case where user is not found
             if (user == null)
             {
-                return ApiResponse<AuthResponseVM>.Failure("User not found");
+                return ApiResponse<AuthResponseVM>.Failure(ErrorMessage.TokenErrorMessage.UserNotFound);
             }
 
             // Token creation logic
-            var tokenExpirationInMinutes = int.Parse(_configuration["Token:TokenExpirationInMinutes"]);
+            var tokenExpirationInMinutes = int.Parse(_configuration["Token:TokenExpirationInMinutes"]!);
             Claim[] claims = GetClaims(user);
 
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Token:Secret"]));
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Token:Secret"]!));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var token = new JwtSecurityToken(
@@ -115,21 +116,21 @@ namespace Web.Api.Business.Command.TokenCommand
 
             if (refreshToken == null)
             {
-                return ApiResponse<AuthResponseVM>.Failure("Invalid refresh token.");
+                return ApiResponse<AuthResponseVM>.Failure(ErrorMessage.RefreshTokenErrorMessage.InvalidToken);
             }
 
             // Kullanıcı bilgilerini al
             var user = await _dbContext.VpApplicationUsers.FindAsync(refreshToken.UserId);
             if (user == null)
             {
-                return ApiResponse<AuthResponseVM>.Failure("User not found.");
+                return ApiResponse<AuthResponseVM>.Failure(ErrorMessage.TokenErrorMessage.UserNotFound);
             }
 
             // Yeni token oluştur
-            var tokenExpirationInMinutes = int.Parse(_configuration["Token:TokenExpirationInMinutes"]);
+            var tokenExpirationInMinutes = int.Parse(_configuration["Token:TokenExpirationInMinutes"]!);
             Claim[] claims = GetClaims(user);
 
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Token:Secret"]));
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Token:Secret"]!));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var newToken = new JwtSecurityToken(
@@ -146,7 +147,7 @@ namespace Web.Api.Business.Command.TokenCommand
             refreshToken.IsRevoked = true;
             _dbContext.VpRefreshTokens.Update(refreshToken);
             await _dbContext.SaveChangesAsync(cancellationToken); 
-            var refreshTokenExpirationInDays = int.Parse(_configuration["Token:RefreshTokenExpirationInDays"]);
+            var refreshTokenExpirationInDays = int.Parse(_configuration["Token:RefreshTokenExpirationInDays"]!);
             // Yeni refresh token'ı kaydet
             var vpRefreshToken = new VpRefreshToken
             {

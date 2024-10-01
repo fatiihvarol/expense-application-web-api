@@ -16,7 +16,7 @@ public class ExceptionMiddleware
     {
         try
         {
-            await _next(httpContext);  // Bir sonraki middleware'i çalıştır
+            await _next(httpContext);  
         }
         catch (Exception ex)
         {
@@ -34,7 +34,7 @@ public class ExceptionMiddleware
         {
             StatusCode = context.Response.StatusCode,
             Message = "Internal Server Error from the custom middleware.",
-            Detailed = exception.Message  // Daha ayrıntılı bilgi eklemek isterseniz
+            Detailed = exception.Message  
         });
 
         return context.Response.WriteAsync(result);

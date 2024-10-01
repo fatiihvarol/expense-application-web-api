@@ -20,7 +20,7 @@ namespace Web.Api.Schema
         public decimal Amount { get; set; }
         public string? Description { get; set; }
         public string? Location { get; set; }
-        public ExpenseCategoryResponse Category { get; set; }
+        public ExpenseCategoryResponse? Category { get; set; }
         public DateTime Date { get; set; }
         public string? ReceiptNumber { get; set; }
         public int ExpenseFormId { get; set; }

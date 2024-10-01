@@ -40,7 +40,7 @@ namespace Web.Api.Business.Mapper
 
 
             CreateMap<VpExpenseFormHistory, ExpenseFormHistoryVM>()
-                     .ForMember(dest => dest.Action, opt => opt.MapFrom(src => src.Action.ToString()));
+             .ForMember(dest => dest.Action, opt => opt.MapFrom(src => src.Action.ToString()));
 
 
             CreateMap<ExpenseCategoryCreateRequest, VpExpenseCategory>();

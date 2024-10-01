@@ -5,6 +5,7 @@
         Pending = 0,
         Approved,
         Rejected,
-        Paid
+        Paid,
+        Deleted
     }
 }

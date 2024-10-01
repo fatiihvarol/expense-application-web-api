@@ -13,9 +13,9 @@ namespace Web.Api.Business.Query.ExpenseFormHistoryQuery
         private readonly AppDbContext _context;
         private readonly IMapper _mapper;
 
-        public ExpenseFormHistoryQueryHandler(AppDbContext dbContext,IMapper mapper)
+        public ExpenseFormHistoryQueryHandler(AppDbContext dbContext, IMapper mapper)
         {
-            
+
             _context = dbContext;
             _mapper = mapper;
         }
@@ -27,7 +27,7 @@ namespace Web.Api.Business.Query.ExpenseFormHistoryQuery
 
             foreach (var item in response)
             {
-                item.FullName = _context.VpApplicationUsers.Where(x=>x.Id == item.MadeBy).FirstOrDefault()?.Name + " " +_context.VpApplicationUsers.Where(x=>x.Id == item.MadeBy).FirstOrDefault()?.Surname;
+                item.FullName = _context.VpApplicationUsers.Where(x => x.Id == item.MadeBy).FirstOrDefault()?.Name + " " + _context.VpApplicationUsers.Where(x => x.Id == item.MadeBy).FirstOrDefault()?.Surname;
                 item.Date = item.Date.ToLocalTime();
             }
 

@@ -10,6 +10,7 @@ using Web.Api.Data.AppDbContext;
 using Web.Api.Business.Cqrs;
 using Web.Api.Base.Enums;
 using Web.Api.Business.Helper;
+using Web.Api.Base.Message;
 
 namespace Web.Api.Business.Command.ExpenseFormCommand
 {
@@ -33,32 +34,40 @@ namespace Web.Api.Business.Command.ExpenseFormCommand
             _httpContextAccessor = httpContextAccessor;
             _expenseFormHistoryHelper = expenseFormHistoryHelper;
         }
-
+        private string? GetUserId()
+        {
+            return _httpContextAccessor.HttpContext?.User.Claims.FirstOrDefault(c => c.Type == "Id")?.Value;
+        }
+        private void UpdateTimestampsAndUser(dynamic entity, string userId)
+        {
+            entity.ModifiedDate = DateTime.Now;
+            entity.ModifiedBy = userId;
+        }
         public async Task<ApiResponse<ExpenseFormResponse>> Handle(CreateExpenseFormCommand request, CancellationToken cancellationToken)
         {
             // JWT token'dan User Id'yi çekme
-            var userId = _httpContextAccessor.HttpContext?.User.Claims.FirstOrDefault(c => c.Type == "Id")?.Value;
+            var userId = GetUserId();
 
             if (userId == null)
             {
-                return ApiResponse<ExpenseFormResponse>.Failure("User Id not found in token");
+                return ApiResponse<ExpenseFormResponse>.Failure(ErrorMessage.TokenErrorMessage.UserIdNotFound);
             }
 
             var employee = await _dbContext.VpEmployees.FirstOrDefaultAsync(e => e.Id == Int32.Parse(userId), cancellationToken);
             if (employee == null)
             {
-                return ApiResponse<ExpenseFormResponse>.Failure("Employee not found");
+                return ApiResponse<ExpenseFormResponse>.Failure(ErrorMessage.CommonErrorMessage.EmployeeNotFound);
             }
 
             var manager = await _dbContext.VpManagers.FirstOrDefaultAsync(m => m.Id == employee.ManagerId, cancellationToken);
             if (manager == null)
             {
-                return ApiResponse<ExpenseFormResponse>.Failure("Manager not found");
+                return ApiResponse<ExpenseFormResponse>.Failure(ErrorMessage.CommonErrorMessage.ManagerNotFound);
             }
 
             if (request.Model.Expenses == null || request.Model.Expenses.Count == 0)
             {
-                return ApiResponse<ExpenseFormResponse>.Failure("You can not add empty expense");
+                return ApiResponse<ExpenseFormResponse>.Failure(ErrorMessage.ExpenseErrorMessage.EmtyExpenseError);
             }
 
 
@@ -81,7 +90,7 @@ namespace Web.Api.Business.Command.ExpenseFormCommand
             var fromdb = _dbContext.VpExpenseForms.Add(expenseForm);
             await _dbContext.SaveChangesAsync(cancellationToken);
 
-            await _expenseFormHistoryHelper.AddHistoryLog(fromdb.Entity.Id, userId, HistoryActionEnum.Created, cancellationToken,_dbContext);
+            await _expenseFormHistoryHelper.AddHistoryLog(fromdb.Entity.Id, userId, HistoryActionEnum.Created, cancellationToken, _dbContext);
 
             var response = _mapper.Map<ExpenseFormResponse>(expenseForm);
             return ApiResponse<ExpenseFormResponse>.Success(response);
@@ -91,41 +100,42 @@ namespace Web.Api.Business.Command.ExpenseFormCommand
         public async Task<ApiResponse<ExpenseFormResponse>> Handle(UpdateExpenseFormCommand request, CancellationToken cancellationToken)
         {
             var expenseForm = await _dbContext.VpExpenseForms
-                .Include(x => x.Expenses)
-                .ThenInclude(y=> y.Category)
+                .Include(x => x.Expenses!)
+                .ThenInclude(y => y.Category)
                 .FirstOrDefaultAsync(x => x.Id == request.Id, cancellationToken);
-           
+
 
             if (expenseForm == null)
             {
-                return ApiResponse<ExpenseFormResponse>.Failure("Expense form not found");
+                return ApiResponse<ExpenseFormResponse>.Failure(ErrorMessage.ExpenseFormErrorMessage.ExpenseFormNotFound);
             }
-            var userId = _httpContextAccessor.HttpContext?.User.Claims.FirstOrDefault(c => c.Type == "Id")?.Value;
+            var userId = GetUserId();
 
             if (userId == null)
             {
-                return ApiResponse<ExpenseFormResponse>.Failure("User Id not found in token");
+                return ApiResponse<ExpenseFormResponse>.Failure(ErrorMessage.TokenErrorMessage.UserIdNotFound);
             }
             if (expenseForm.EmployeeId != Int32.Parse(userId))
             {
-                return ApiResponse<ExpenseFormResponse>.Failure("You are not authorized to update this expense form");
+                return ApiResponse<ExpenseFormResponse>.Failure(ErrorMessage.ExpenseFormErrorMessage.UpdateAuthorizationError);
             }
 
-            // Modelden expenseForm'a sadece güncellenmesi gereken alanları eşle
+            //mapping
             _mapper.Map(request.Model, expenseForm);
-            expenseForm.ModifiedDate = DateTime.Now;
-            expenseForm.ModifiedBy = _httpContextAccessor.HttpContext?.User.Claims.FirstOrDefault(c => c.Type == "Id")?.Value;
+
+
+            UpdateTimestampsAndUser(expenseForm, userId);
 
             if (expenseForm.Expenses != null)
             {
                 foreach (var item in expenseForm.Expenses)
                 {
-                    item.ModifiedDate = DateTime.Now;
-                    item.ModifiedBy = _httpContextAccessor.HttpContext?.User.Claims.FirstOrDefault(c => c.Type == "Id")?.Value;
+                    UpdateTimestampsAndUser(item, userId);
+
                 }
             }
             expenseForm.RejectionDescription = null;
-           _dbContext.VpExpenseForms.Update(expenseForm);
+            _dbContext.VpExpenseForms.Update(expenseForm);
             await _dbContext.SaveChangesAsync(cancellationToken);
 
             await _expenseFormHistoryHelper.AddHistoryLog(expenseForm.Id, userId, HistoryActionEnum.Updated, cancellationToken, _dbContext);
@@ -137,11 +147,11 @@ namespace Web.Api.Business.Command.ExpenseFormCommand
 
         public async Task<ApiResponse<object>> Handle(DeleteExpenseFormCommand request, CancellationToken cancellationToken)
         {
-            var userId = _httpContextAccessor.HttpContext?.User.Claims.FirstOrDefault(c => c.Type == "Id")?.Value;
+            var userId = GetUserId();
 
             if (userId == null)
             {
-                return ApiResponse<object>.Failure("User Id not found in token");
+                return ApiResponse<object>.Failure(ErrorMessage.TokenErrorMessage.UserIdNotFound);
             }
 
             var expenseForm = await _dbContext.VpExpenseForms
@@ -149,16 +159,18 @@ namespace Web.Api.Business.Command.ExpenseFormCommand
                 .FirstOrDefaultAsync(x => x.Id == request.Id, cancellationToken);
             if (expenseForm == null)
             {
-                return ApiResponse<object>.Failure("Expense form not found");
+                return ApiResponse<object>.Failure(ErrorMessage.ExpenseFormErrorMessage.ExpenseFormNotFound);
             }
 
             expenseForm.IsDeleted = true;
-            expenseForm.ModifiedDate = DateTime.Now;
-            expenseForm.ModifiedBy = userId;
+
+            UpdateTimestampsAndUser(expenseForm, userId);
+
+            expenseForm.ExpenseStatusEnum = ExpenseStatusEnum.Deleted;
 
             if (expenseForm.EmployeeId != Int32.Parse(userId))
             {
-                return ApiResponse<object>.Failure("You are not authorized to delete this expense form");
+                return ApiResponse<object>.Failure(ErrorMessage.ExpenseFormErrorMessage.UpdateAuthorizationError);
             }
 
             if (expenseForm.Expenses != null)
@@ -166,8 +178,7 @@ namespace Web.Api.Business.Command.ExpenseFormCommand
                 foreach (var expense in expenseForm.Expenses)
                 {
                     expense.IsDeleted = true;
-                    expense.ModifiedDate = DateTime.Now;
-                    expense.ModifiedBy = userId;
+                    UpdateTimestampsAndUser(expense, userId);
                 }
             }
 
@@ -175,88 +186,90 @@ namespace Web.Api.Business.Command.ExpenseFormCommand
             await _dbContext.SaveChangesAsync(cancellationToken);
             await _expenseFormHistoryHelper.AddHistoryLog(expenseForm.Id, userId, HistoryActionEnum.Deleted, cancellationToken, _dbContext);
 
-            return ApiResponse<object>.Success("Expense Form Deleted");
+            return ApiResponse<object>.Success(SuccesMessaage.ExpenseFormSuccesMessage.ExpenseFormDeleted);
         }
 
         public async Task<ApiResponse<object>> Handle(DeclineExpenseFormCommand request, CancellationToken cancellationToken)
         {
-            var userId = _httpContextAccessor.HttpContext?.User.Claims.FirstOrDefault(c => c.Type == "Id")?.Value;
+            var userId = GetUserId();
             if (userId == null)
             {
-                return 
-                    ApiResponse<object>.Failure("User Id not found in token");
+                return
+                    ApiResponse<object>.Failure(ErrorMessage.TokenErrorMessage.UserIdNotFound);
             }
             var expenseForm = await _dbContext.VpExpenseForms.FirstOrDefaultAsync(e => e.Id == request.Id, cancellationToken);
             if (expenseForm == null)
             {
-                return ApiResponse<object>.Failure("Expense form not found");
+                return ApiResponse<object>.Failure(ErrorMessage.ExpenseFormErrorMessage.ExpenseFormNotFound);
             }
 
-            expenseForm.ExpenseStatusEnum = Base.Enums.ExpenseStatusEnum.Rejected;
+            expenseForm.ExpenseStatusEnum = ExpenseStatusEnum.Rejected;
             expenseForm.RejectionDescription = request.RejectionDescription;
             _dbContext.VpExpenseForms.Update(expenseForm);
             await _dbContext.SaveChangesAsync(cancellationToken);
 
             await _expenseFormHistoryHelper.AddHistoryLog(expenseForm.Id, userId, HistoryActionEnum.Rejected, cancellationToken, _dbContext);
 
-            return ApiResponse<object>.Success("Expense Form Declined");
+            return ApiResponse<object>.Success(SuccesMessaage.ExpenseFormSuccesMessage.ExpenseFormDeclined);
         }
 
         public async Task<ApiResponse<object>> Handle(ApproveExpenseFormCommand request, CancellationToken cancellationToken)
         {
-            var managerId = _httpContextAccessor.HttpContext?.User.Claims.FirstOrDefault(c => c.Type == "Id")?.Value;
+            var managerId = GetUserId();
 
             if (managerId == null)
             {
-                return ApiResponse<object>.Failure("Manager Id not found in token");
+                return ApiResponse<object>.Failure(ErrorMessage.TokenErrorMessage.UserIdNotFound);
             }
 
             var expenseForm = await _dbContext.VpExpenseForms.FirstOrDefaultAsync(e => e.Id == request.Id, cancellationToken);
 
             if (expenseForm == null)
             {
-                return ApiResponse<object>.Failure("Expense form not found");
+                return ApiResponse<object>.Failure(ErrorMessage.ExpenseFormErrorMessage.ExpenseFormNotFound);
             }
             if (expenseForm.ManagerId != Int32.Parse(managerId))
             {
-                return ApiResponse<object>.Failure("You are not authorized to approve this expense form");
+                return ApiResponse<object>.Failure(ErrorMessage.ExpenseFormErrorMessage.UpdateAuthorizationError);
             }
 
-            expenseForm.ExpenseStatusEnum = Base.Enums.ExpenseStatusEnum.Approved;
-            expenseForm.ModifiedBy = managerId;
-            expenseForm.ModifiedDate = DateTime.Now;
+            expenseForm.ExpenseStatusEnum = ExpenseStatusEnum.Approved;
+
+            UpdateTimestampsAndUser(expenseForm, managerId);
+
             _dbContext.VpExpenseForms.Update(expenseForm);
             await _dbContext.SaveChangesAsync(cancellationToken);
 
             await _expenseFormHistoryHelper.AddHistoryLog(expenseForm.Id, managerId, HistoryActionEnum.Approved, cancellationToken, _dbContext);
 
-            return ApiResponse<object>.Success("Expense Form Approved");
+            return ApiResponse<object>.Success(SuccesMessaage.ExpenseFormSuccesMessage.ExpenseFormApproved);
         }
 
         public async Task<ApiResponse<object>> Handle(PayExpenseFormCommand request, CancellationToken cancellationToken)
         {
-            var accountantId = _httpContextAccessor.HttpContext?.User.Claims.FirstOrDefault(c => c.Type == "Id")?.Value;
+            var accountantId = GetUserId();
             if (accountantId == null)
             {
-                return ApiResponse<object>.Failure("Accountant Id not found in token");
+                return ApiResponse<object>.Failure(ErrorMessage.TokenErrorMessage.UserIdNotFound);
             }
 
             var expenseForm = _dbContext.VpExpenseForms.FirstOrDefault(e => e.Id == request.Id);
             if (expenseForm == null)
             {
-                return ApiResponse<object>.Failure("Expense form not found");
+                return ApiResponse<object>.Failure(ErrorMessage.ExpenseFormErrorMessage.ExpenseFormNotFound);
             }
 
             expenseForm.AccountantId = Int32.Parse(accountantId);
-            expenseForm.ExpenseStatusEnum = Base.Enums.ExpenseStatusEnum.Paid;
-            expenseForm.ModifiedBy = accountantId;
-            expenseForm.ModifiedDate = DateTime.Now;
+            expenseForm.ExpenseStatusEnum = ExpenseStatusEnum.Paid;
+
+            UpdateTimestampsAndUser(expenseForm, accountantId);
+
             _dbContext.VpExpenseForms.Update(expenseForm);
             _dbContext.SaveChanges();
 
             await _expenseFormHistoryHelper.AddHistoryLog(expenseForm.Id, accountantId, HistoryActionEnum.Paid, cancellationToken, _dbContext);
 
-            return ApiResponse<object>.Success("Expense Form Paid");
+            return ApiResponse<object>.Success(SuccesMessaage.ExpenseFormSuccesMessage.ExpenseFormPaid);
 
         }
     }

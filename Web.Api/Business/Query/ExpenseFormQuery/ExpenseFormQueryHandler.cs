@@ -6,15 +6,13 @@ using Web.Api.Schema;
 using Web.Api.Data.Entities;
 using Web.Api.Data.AppDbContext;
 using Web.Api.Business.Cqrs;
-using Web.Api.Base.Enums; // Replace with your actual namespace
+using Web.Api.Base.Enums;
+using Web.Api.Base.Message; // Replace with your actual namespace
 
 namespace Web.Api.Business.Query.ExpenseFormQuery
 {
     public class ExpenseFormQueryHandler
-        : IRequestHandler<GetAllExpensesQuery, ApiResponse<List<ExpenseFormResponse>>>,
-          IRequestHandler<GetExpensesByEmployeeIdQuery, ApiResponse<List<ExpenseFormResponse>>>,
-          IRequestHandler<GetExpenseByIdQuery, ApiResponse<ExpenseFormResponse>>,
-          IRequestHandler<GetExpensesByParametersQuery, ApiResponse<List<ExpenseFormResponse>>>,
+        : IRequestHandler<GetExpenseByIdQuery, ApiResponse<ExpenseFormResponse>>,
           IRequestHandler<GetMyExpensesQuery, ApiResponse<List<ExpenseFormResponse>>>,
         IRequestHandler<GetExpenseFormsByManager, ApiResponse<List<ExpenseFormResponse>>>,
         IRequestHandler<GetExpenseFormsByAccountant, ApiResponse<List<ExpenseFormResponse>>>,
@@ -32,105 +30,57 @@ namespace Web.Api.Business.Query.ExpenseFormQuery
             _mapper = mapper;
             _httpContextAccessor = httpContextAccessor;
         }
-
-        public async Task<ApiResponse<List<ExpenseFormResponse>>> Handle(GetAllExpensesQuery request, CancellationToken cancellationToken)
+        private string? GetUserId()
         {
-            var expenseForms = await _dbContext.VpExpenseForms
-                .Where(e => e.IsDeleted == false)
-                .Include(e => e.Expenses)
-                .ThenInclude(expense => expense.Category)
-                .ToListAsync(cancellationToken);
-
-            var response = _mapper.Map<List<ExpenseFormResponse>>(expenseForms);
-            return ApiResponse<List<ExpenseFormResponse>>.Success(response);
+            return _httpContextAccessor.HttpContext?.User.Claims.FirstOrDefault(c => c.Type == "Id")?.Value;
         }
 
-        public async Task<ApiResponse<List<ExpenseFormResponse>>> Handle(GetExpensesByEmployeeIdQuery request, CancellationToken cancellationToken)
-        {
-            var expenseForms = await _dbContext.VpExpenseForms
-                .Where(e => e.IsDeleted == false)
-                .Where(e => e.EmployeeId == request.EmployeeId)
-                .Include(e => e.Expenses)
-                .ThenInclude(expense => expense.Category)
-                .ToListAsync(cancellationToken);
-
-            var response = _mapper.Map<List<ExpenseFormResponse>>(expenseForms);
-            return ApiResponse<List<ExpenseFormResponse>>.Success(response);
-        }
 
         public async Task<ApiResponse<ExpenseFormResponse>> Handle(GetExpenseByIdQuery request, CancellationToken cancellationToken)
         {
-            var userId = _httpContextAccessor.HttpContext?.User.Claims.FirstOrDefault(c => c.Type == "Id")?.Value;
+            var userId = GetUserId();
             if (userId == null)
             {
-                return   ApiResponse<ExpenseFormResponse>.Failure("User  Id Not Found in Token");
+                return ApiResponse<ExpenseFormResponse>.Failure(ErrorMessage.TokenErrorMessage.UserIdNotFound);
             }
+
             var user = _dbContext.VpApplicationUsers.FirstOrDefault(u => u.Id == Int32.Parse(userId));
-            
+            if (user == null)
+            {
+                return
+                    ApiResponse<ExpenseFormResponse>.Failure(ErrorMessage.TokenErrorMessage.UserNotFound);
+            }
+            // Adjusted query to include deleted forms for Admin role
             var expenseForm = await _dbContext.VpExpenseForms
-                .Include(e => e.Expenses)
+                .Include(e => e.Expenses!)
                 .ThenInclude(expense => expense.Category)
+                .FirstOrDefaultAsync(e => e.Id == request.Id && (user.Role == UserRoleEnum.Admin || e.IsDeleted == false), cancellationToken);
 
-                .Where(e=>e.IsDeleted==false)
-                .FirstOrDefaultAsync(e => e.Id == request.Id, cancellationToken);
-
-        
             if (expenseForm == null)
             {
-                return ApiResponse<ExpenseFormResponse>.Failure("Expense form not found");
+                return ApiResponse<ExpenseFormResponse>.Failure(ErrorMessage.ExpenseFormErrorMessage.ExpenseFormNotFound);
             }
-            if (user != null && (user.Role == UserRoleEnum.Manager || user.Role == UserRoleEnum.Employee))
-            {
-                if (expenseForm.ManagerId != Int32.Parse(userId) && expenseForm.EmployeeId != Int32.Parse(userId))
-                {
-                    return ApiResponse<ExpenseFormResponse>.Failure("You don't have permission");
-                }
-                if (user.Role == UserRoleEnum.Manager && expenseForm.ExpenseStatusEnum != ExpenseStatusEnum.Pending)
-                {
-                    return ApiResponse<ExpenseFormResponse>.Failure("You don't have permission");
 
-                }
-            }
+
             var response = _mapper.Map<ExpenseFormResponse>(expenseForm);
             return ApiResponse<ExpenseFormResponse>.Success(response);
         }
 
-        public async Task<ApiResponse<List<ExpenseFormResponse>>> Handle(GetExpensesByParametersQuery request, CancellationToken cancellationToken)
-        {
-
-            Enum.TryParse(request.Status, out ExpenseStatusEnum statusEnum);
-           
-
-            var expenseForms = await _dbContext.VpExpenseForms
-                .Where(e => e.IsDeleted == false)
-                .Where(e =>
-                    (request.EmployeeId == 0 || e.EmployeeId == request.EmployeeId) &&
-                    (request.Status == null || e.ExpenseStatusEnum == statusEnum) &&
-                    (request.Amount == 0 || e.TotalAmount == request.Amount))
-                .Include(e => e.Expenses)
-                .ThenInclude(expense => expense.Category)
-                .ToListAsync(cancellationToken);
-
-
-
-            var response = _mapper.Map<List<ExpenseFormResponse>>(expenseForms);
-            return ApiResponse<List<ExpenseFormResponse>>.Success(response);
-        }
 
         public async Task<ApiResponse<List<ExpenseFormResponse>>> Handle(GetMyExpensesQuery request, CancellationToken cancellationToken)
         {
-            var userId = _httpContextAccessor.HttpContext?.User.Claims.FirstOrDefault(c => c.Type == "Id")?.Value;
+            var userId = GetUserId();
 
             if (userId == null)
             {
-                return ApiResponse<List<ExpenseFormResponse>>.Failure("User Id not found in token");
+                return ApiResponse<List<ExpenseFormResponse>>.Failure(ErrorMessage.TokenErrorMessage.UserIdNotFound);
             }
-              var expenseForms = await _dbContext.VpExpenseForms
-           .Where(e => e.IsDeleted == false)
-           .Where(e => e.EmployeeId == int.Parse(userId))
-           .Include(e => e.Expenses)                    // Include Expenses
-           .ThenInclude(expense => expense.Category)    // ThenInclude Category in each Expense
-           .ToListAsync(cancellationToken);
+            var expenseForms = await _dbContext.VpExpenseForms
+         .Where(e => e.IsDeleted == false)
+         .Where(e => e.EmployeeId == int.Parse(userId))
+         .Include(e => e.Expenses!)                    // Include Expenses
+         .ThenInclude(expense => expense.Category)    // ThenInclude Category in each Expense
+         .ToListAsync(cancellationToken);
 
 
 
@@ -140,16 +90,16 @@ namespace Web.Api.Business.Query.ExpenseFormQuery
 
         public Task<ApiResponse<List<ExpenseFormResponse>>> Handle(GetExpenseFormsByManager request, CancellationToken cancellationToken)
         {
-            var userId = _httpContextAccessor.HttpContext?.User.Claims.FirstOrDefault(c => c.Type == "Id")?.Value;
+            var userId = GetUserId();
 
-            if (userId is null)       
-                return Task.FromResult(ApiResponse<List<ExpenseFormResponse>>.Failure("User Id not found in token"));
-            
+            if (userId is null)
+                return Task.FromResult(ApiResponse<List<ExpenseFormResponse>>.Failure(ErrorMessage.TokenErrorMessage.UserIdNotFound));
+
             var expenseForms = _dbContext.VpExpenseForms
                 .Where(e => e.IsDeleted == false)
                 .Where(e => e.ManagerId == Int32.Parse(userId))
                 .Where(e => e.ExpenseStatusEnum == ExpenseStatusEnum.Pending)
-                .Include(e => e.Expenses)
+                .Include(e => e.Expenses!)
                 .ThenInclude(expense => expense.Category)
                 .ToList();
 
@@ -166,15 +116,15 @@ namespace Web.Api.Business.Query.ExpenseFormQuery
 
         public Task<ApiResponse<List<ExpenseFormResponse>>> Handle(GetExpenseFormsByAccountant request, CancellationToken cancellationToken)
         {
-            var userId = _httpContextAccessor.HttpContext?.User.Claims.FirstOrDefault(c => c.Type == "Id")?.Value;
+            var userId = GetUserId();
 
             if (userId is null)
-                return Task.FromResult(ApiResponse<List<ExpenseFormResponse>>.Failure("User Id not found in token"));
+                return Task.FromResult(ApiResponse<List<ExpenseFormResponse>>.Failure(ErrorMessage.TokenErrorMessage.UserIdNotFound));
 
             var expenseForms = _dbContext.VpExpenseForms
                 .Where(e => e.IsDeleted == false)
                 .Where(e => e.ExpenseStatusEnum == ExpenseStatusEnum.Approved)
-                .Include(e => e.Expenses)
+                .Include(e => e.Expenses!)
                 .ThenInclude(expense => expense.Category)
                 .ToList();
 
@@ -193,18 +143,18 @@ namespace Web.Api.Business.Query.ExpenseFormQuery
             return Task.FromResult(ApiResponse<List<ExpenseFormResponse>>.Success(response));
         }
 
-        public  Task<ApiResponse<EmployeeExpenseInfoVM>> Handle(GetEmployeeExpenseInfoQuery request, CancellationToken cancellationToken)
+        public Task<ApiResponse<EmployeeExpenseInfoVM>> Handle(GetEmployeeExpenseInfoQuery request, CancellationToken cancellationToken)
         {
-            var userId = _httpContextAccessor.HttpContext?.User.Claims.FirstOrDefault(c => c.Type == "Id")?.Value;
+            var userId = GetUserId();
 
             if (userId is null)
-                return Task.FromResult(ApiResponse<EmployeeExpenseInfoVM>.Failure("User Id not found in token"));
+                return Task.FromResult(ApiResponse<EmployeeExpenseInfoVM>.Failure(ErrorMessage.TokenErrorMessage.UserIdNotFound));
 
             var expenseForms = _dbContext.VpExpenseForms
                 .Where(e => !e.IsDeleted && e.EmployeeId == Int32.Parse(userId))
-                .Include(e => e.Expenses)
+                .Include(e => e.Expenses!)
                 .ThenInclude(expense => expense.Category)
-                .OrderByDescending(e => e.CreatedDate) 
+                .OrderByDescending(e => e.CreatedDate)
                 .ToList();
 
             // Her para birimi için toplam gider miktarını hesaplama
@@ -217,7 +167,7 @@ namespace Web.Api.Business.Query.ExpenseFormQuery
 
             // Son 3 expense formu alıyoruz
             var temp = expenseForms
-                .Take(3) 
+                .Take(3)
                 .ToList();
             var lastThreeExpenseForms = _mapper.Map<ICollection<ExpenseFormResponse>>(temp);
 
@@ -236,14 +186,13 @@ namespace Web.Api.Business.Query.ExpenseFormQuery
 
         public Task<ApiResponse<List<ExpenseFormResponse>>> Handle(GetExpenseFormsByAdmin request, CancellationToken cancellationToken)
         {
-            var userId = _httpContextAccessor.HttpContext?.User.Claims.FirstOrDefault(c => c.Type == "Id")?.Value;
+            var userId = GetUserId();
 
             if (userId is null)
-                return Task.FromResult(ApiResponse<List<ExpenseFormResponse>>.Failure("User Id not found in token"));
+                return Task.FromResult(ApiResponse<List<ExpenseFormResponse>>.Failure(ErrorMessage.TokenErrorMessage.UserIdNotFound));
 
             var expenseForms = _dbContext.VpExpenseForms
-                .Where(e => e.IsDeleted == false)
-                .Include(e => e.Expenses)
+                .Include(e => e.Expenses!)
                 .ThenInclude(expense => expense.Category)
                 .ToList();
 

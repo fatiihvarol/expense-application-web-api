@@ -7,7 +7,7 @@ namespace Web.Api.Schema
         public int PendingApprovalCount { get; set; }
         public int ApprovedCount { get; set; }
         public int TotalExpenseCount { get; set; }
-        public Dictionary<CurrencyEnum, decimal> TotalExpenseAmount { get; set; } // Her para birimi için ayrı toplam
+        public Dictionary<CurrencyEnum, decimal>? TotalExpenseAmount { get; set; } 
         public ICollection<ExpenseFormResponse>? LastExpenseForms { get; set; }
     }
 }
