@@ -35,14 +35,6 @@ This is a full-stack **Expense Management** application designed to streamline t
 - **CQRS Pattern**:
   - The backend follows the CQRS (Command Query Responsibility Segregation) pattern, implemented using **MediatR** for separating read and write operations.
 
-## Prerequisites
-
-Before running this project, ensure you have the following installed:
-
-- **Microsoft Visual Studio (Enterprise Edition)**
-- **Microsoft SQL Server (Developer Edition)**
-- **SQL Server Management Studio**
-- **Node.js** (for React frontend)
 
 ## Installation & Setup
 
